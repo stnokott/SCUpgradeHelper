@@ -4,12 +4,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from typing import List
 
+from const import DATABASE_FILEPATH
 from db.entity import Ship, Base
 
 
 class EntityManager:
     def __init__(self):
-        self._engine = create_engine("sqlite:///database.db", echo=True)
+        self._engine = create_engine(f"sqlite:///{DATABASE_FILEPATH}", echo=True)
         self.Session = sessionmaker(bind=self._engine)
         Base.metadata.create_all(self._engine)
 
