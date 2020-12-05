@@ -1,18 +1,17 @@
 """Manager for database entities"""
 
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from typing import List
 
-from db.entity.official import Ship
+from db.entity import Ship, Base
 
 
 class EntityManager:
     def __init__(self):
-        path = os.path.join(os.getcwd(), "database.db")
-        self._engine = create_engine("sqlite:////%s" % path, echo=True)
+        self._engine = create_engine("sqlite:///database.db", echo=True)
         self.Session = sessionmaker(bind=self._engine)
+        Base.metadata.create_all(self._engine)
 
     def _create_session(self) -> Session:
         session = self.Session()
