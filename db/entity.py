@@ -1,4 +1,4 @@
-"""Contains entity classes for officially relayed data"""
+"""Contains entity classes for ORM"""
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, String
 
