@@ -1,1 +1,1 @@
-"""ORM entities for DB"""
+"""contains db entity classes"""
