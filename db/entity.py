@@ -13,7 +13,7 @@ class Ship(Base):
     __tablename__ = "SHIP"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String)
+    name = Column(String, unique=True)
     manufacturer = Column(String)
 
     def __init__(self, name: str, manufacturer: str):
