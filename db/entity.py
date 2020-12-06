@@ -10,12 +10,15 @@ class Ship(Base):
     Class representing a purchasable ship or vehicle
     """
 
-    __tablename__ = "SHIPS"
+    __tablename__ = "SHIP"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
     manufacturer = Column(String)
-    price_dollar = Column(Float)
+
+    def __init__(self, name: str, manufacturer: str):
+        self.name = name
+        self.manufacturer = manufacturer
 
     def __repr__(self):
-        return "<%s@%d(%s, $%d)>" % self.__name__, self.id, self.name, self.price_dollar
+        return f"<{Ship.__name__}]>({self.manufacturer} {self.name})"
