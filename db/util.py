@@ -18,6 +18,27 @@ class EntityManager:
         session = self.Session()
         return session
 
+    def load_ships(self, ships: List[Ship], drop: bool = False) -> None:
+        session = self._create_session()
+        if drop:
+            session.query(Ship).delete()
+            # add all ships to empty table
+            session.add_all(ships)
+        else:
+            for ship in ships:
+                # check if ship already exists in db
+                queried_ship = (
+                    session.query(Ship).filter(Ship.name == ship.name).first()
+                )
+                if not queried_ship:
+                    # add if not existing in db
+                    session.add(ship)
+                else:
+                    print(f"Skipping insertion of existing {ship}")
+
+        session.commit()
+        session.close()
+
     def get_ships(self) -> List[Ship]:
         session = self._create_session()
         ships = session.query(Ship).all()
