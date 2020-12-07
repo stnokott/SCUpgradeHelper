@@ -55,7 +55,9 @@ class EntityManager:
 
     def _update_all_tables(self, update_only: bool):
         self._logger.info("Updating database...")
+        self._logger.info("###### SHIPS ######")
         self._update_table_by_provider_type(DataProviderType.SHIPS, update_only)
+        self._logger.info("###################")
         self._logger.info("Database successfully updated.")
 
     def _insert_ships(self, ships: List[Ship], drop_first: bool) -> None:
@@ -72,6 +74,7 @@ class EntityManager:
             session.add_all(ships)
         else:
             skipped_count = 0
+            updated_ships = []
             for ship in ships:
                 # check if ship already exists in db
                 query = session.query(Ship).filter(Ship.name == ship.name)
@@ -80,18 +83,21 @@ class EntityManager:
                     # add if not existing in db
                     session.add(ship)
                 elif queried_ship != ship:
+                    # overwrite data if exists, but not equal
                     ship.copy_attrs_to(queried_ship)
+                    updated_ships.append(queried_ship)
                 else:
                     skipped_count += 1
             if len(session.new) > 0:
-                self._logger.debug(f"Inserting {len(session.new)} new ships:")
-                for new_entity in session.new:
-                    if type(new_entity) == Ship:
-                        print(f">>> {new_entity}")
-            if len(session.dirty) > 0:
-                self._logger.debug(f"Updating {len(session.dirty)} ships with new data.")
+                for new_ship in session.new:
+                    if isinstance(new_ship, Ship):
+                        self._logger.info(f">>> New ship added: {new_ship}.")
+            if len(updated_ships) > 0:
+                for updated_ship in updated_ships:
+                    if isinstance(updated_ship, Ship):
+                        self._logger.info(f">>> Ship updated: {updated_ship}.")
             if skipped_count > 0:
-                self._logger.debug(f"({skipped_count} pre-existing ships skipped.)")
+                self._logger.info(f">>> {skipped_count} pre-existing ships skipped.")
 
         session.commit()
         session.close()
