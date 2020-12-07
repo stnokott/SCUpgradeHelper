@@ -37,4 +37,4 @@ class Ship(Base):
         )
 
     def __repr__(self):
-        return f"<{Ship.__name__}]>({self.manufacturer} {self.name})"
+        return f"<{Ship.__name__}>({self.manufacturer} {self.name})"
