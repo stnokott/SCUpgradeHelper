@@ -1,6 +1,7 @@
 """contains config classes"""
 
 import configparser
+import logging
 import os
 
 from const import CONFIG_FILEPATH
@@ -9,7 +10,10 @@ DEFAULT_VALUES = {"AUTH": {"SCApiKey": ""}}
 
 
 class ConfigProvider:
-    def __init__(self):
+    """
+    Provides configuration data from config file
+    """
+    def __init__(self, logger: logging.Logger):
         self._ensure_file_exists()
         self._config = configparser.ConfigParser()
         self._config.read(CONFIG_FILEPATH)
@@ -17,6 +21,7 @@ class ConfigProvider:
         # read AUTH section
         auth_section = self._get_section("AUTH")
         self.sc_api_key = auth_section["SCApiKey"]
+        logger.info("Configuration parsed.")
 
     def _get_section(self, section_name: str) -> configparser.SectionProxy:
         # check if section exists
