@@ -31,8 +31,7 @@ class Ship(Base):
 
     def __eq__(self, other):
         return (
-            self.id == other.id
-            and self.name == other.name
+            self.name == other.name
             and self.manufacturer == other.manufacturer
         )
 
