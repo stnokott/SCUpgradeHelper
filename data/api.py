@@ -25,13 +25,15 @@ class SCApi:
         Returns:
             list of ship entities
         """
-        self._logger.info("Retrieving ship data (may take a while)...")
+        self._logger.info("### RETRIEVING SHIP DATA ###")
+        self._logger.info("(this may take a while)")
         try:
             response = self._get("/ships")
-            self._logger.info("Ship data retrieved.")
+            self._logger.info("########### DONE ###########")
             return self._ships_from_json(response)
         except RequestUnsuccessfulException as e:
             self._logger.warning(f"Unsuccessful request to ships endpoint: {e}")
+            self._logger.info("########### ERROR ##########")
             return []
 
     @classmethod

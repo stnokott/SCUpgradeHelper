@@ -55,16 +55,14 @@ class EntityManager:
 
     def _update_all_tables(self, update_only: bool):
         self._logger.info("Updating database...")
-        self._logger.info("###### SHIPS ######")
         self._update_table_by_provider_type(DataProviderType.SHIPS, update_only)
-        self._logger.info("###################")
         self._logger.info("Database successfully updated.")
 
     def _insert_ships(self, ships: List[Ship], drop_first: bool) -> None:
         """
         Insert ships
         """
-        self._logger.debug("Processing ship list...")
+        self._logger.info("### PROCESSING SHIPS ###")
         session = self._create_session()
         if drop_first:
             self._logger.debug(f"Dropping {Ship.__tablename__} data...")
@@ -101,7 +99,7 @@ class EntityManager:
 
         session.commit()
         session.close()
-        self._logger.debug("Done processing ship list.")
+        self._logger.info("######### DONE #########")
 
     def get_ships(self) -> List[Ship]:
         """
