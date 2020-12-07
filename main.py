@@ -3,7 +3,7 @@ import logging
 
 from data.api import SCApi, ShipDataProvider
 from config import ConfigProvider
-from data.util import DataProviderManager, DataProviderType
+from data.provider import DataProviderManager, DataProviderType
 from db.util import EntityManager
 
 if __name__ == '__main__':
@@ -15,5 +15,5 @@ if __name__ == '__main__':
     scapi = SCApi(config.sc_api_key, logger)
     data_provider_manager = DataProviderManager()
     data_provider_manager.add_data_provider(DataProviderType.SHIPS, ShipDataProvider(scapi, logger))
-    em = EntityManager(data_provider_manager, logger, reset_db=True)
+    em = EntityManager(data_provider_manager, logger)
     print(em.get_ships())

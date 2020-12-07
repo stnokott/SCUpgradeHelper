@@ -5,7 +5,7 @@ from json.decoder import JSONDecodeError
 import requests
 from typing import List
 
-from data.util import DataProvider
+from data.provider import DataProvider
 from db.entity import Ship
 
 
