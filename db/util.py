@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from typing import List
 
 from const import DATABASE_FILEPATH
-from data.util import DataProviderManager, DataProviderType
+from data.provider import DataProviderManager, DataProviderType
 from db.entity import Ship, Base
 
 
