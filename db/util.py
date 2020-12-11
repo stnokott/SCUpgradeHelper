@@ -2,12 +2,11 @@
 
 import logging
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 from typing import List
 
 from const import DATABASE_FILEPATH
-from data.provider import DataProviderManager, DataProviderType
-from db.entity import Ship, Base
+from db.entity import Ship, Base, Manufacturer
 
 
 class EntityManager:
@@ -17,99 +16,95 @@ class EntityManager:
 
     def __init__(
             self,
-            data_provider_manager: DataProviderManager,
-            logger: logging.Logger,
-            reset_db: bool = False,
-            update_later: bool = False,
+            logger: logging.Logger
     ):
         self._engine = create_engine(f"sqlite:///{DATABASE_FILEPATH}", echo=(logger.level == logging.DEBUG))
-        self.Session = sessionmaker(bind=self._engine)
-        self._data_provider_manager = data_provider_manager
+        self._session = Session(bind=self._engine, expire_on_commit=False)
         self._logger = logger
         self._create_schema()
-        if not update_later:
-            self._update_all_tables(not reset_db)
 
     def _create_schema(self):
         self._logger.debug("Applying database schemata...")
         Base.metadata.create_all(self._engine)
 
-    def _create_session(self) -> Session:
-        session = self.Session()
-        return session
-
-    def _update_table_by_provider_type(
-            self, data_provider_type: DataProviderType, update_only: bool = True
-    ):
-        data_provider = self._data_provider_manager.get_data_provider(
-            data_provider_type
-        )
-        update_performed = data_provider.update()
-        if update_performed:
-            if data_provider_type == DataProviderType.SHIPS:
-                self._insert_ships(data_provider.get_data(), not update_only)
-            else:
-                raise ValueError(
-                    f"No insert method known for provider type {data_provider_type}"
-                )
-
-    def _update_all_tables(self, update_only: bool):
-        self._logger.info("Updating database...")
-        self._update_table_by_provider_type(DataProviderType.SHIPS, update_only)
-        self._logger.info("Database successfully updated.")
-
-    def _insert_ships(self, ships: List[Ship], drop_first: bool) -> None:
+    def update_ships(self, ships: List[Ship], drop_first: bool) -> None:
         """
-        Insert ships
+        Insert ships or update if existing
+        Args:
+            ships: ships to process
+            drop_first: will drop ship table before processing if True
         """
         self._logger.info("### PROCESSING SHIPS ###")
-        session = self._create_session()
+
         if drop_first:
             self._logger.debug(f"Dropping {Ship.__tablename__} data...")
-            session.query(Ship).delete()
+            self._session.query(Ship).delete()
             # add all ships to empty table
             self._logger.debug(f"Adding {len(ships)} ships to database...")
-            session.add_all(ships)
-        else:
-            skipped_count = 0
-            updated_ships = []
             for ship in ships:
-                # check if ship already exists in db
-                query = session.query(Ship).filter(Ship.name == ship.name)
-                queried_ship = query.first()
+                self._session.merge(ship)
+        else:
+            for ship in ships:
+                # check if ship already exists
+                queried_ship = self.get_ship_by_name(ship.name)
                 if not queried_ship:
                     # add if not existing in db
-                    session.add(ship)
+                    self._session.add(ship)
                 elif queried_ship != ship:
                     # overwrite data if exists, but not equal
                     ship.copy_attrs_to(queried_ship)
-                    updated_ships.append(queried_ship)
-                else:
-                    skipped_count += 1
-            if len(session.new) > 0:
-                for new_ship in session.new:
-                    if isinstance(new_ship, Ship):
-                        self._logger.info(f">>> New ship added: {new_ship}.")
-            if len(updated_ships) > 0:
-                for updated_ship in updated_ships:
-                    if isinstance(updated_ship, Ship):
-                        self._logger.info(f">>> Ship updated: {updated_ship}.")
-            if skipped_count > 0:
-                self._logger.info(f">>> {skipped_count} pre-existing ships skipped.")
 
-        session.commit()
-        session.close()
+        new_ship_count = 0
+        if len(self._session.new) > 0:
+            for new_ship in self._session.new:
+                if isinstance(new_ship, Ship):
+                    new_ship_count += 1
+                    self._logger.info(f">>> New ship added: {new_ship}.")
+        updated_ship_count = 0
+        if len(self._session.dirty) > 0:
+            for updated_ship in self._session.dirty:
+                if isinstance(updated_ship, Ship):
+                    updated_ship_count += 1
+                    self._logger.info(f">>> Ship updated: {updated_ship}.")
+        if new_ship_count + updated_ship_count < len(ships):
+            self._logger.info(f">>> {len(ships) - (new_ship_count + updated_ship_count)} pre-existing ships skipped.")
+
+        self._session.commit()
         self._logger.info("######### DONE #########")
+
+    def get_ship_by_name(self, ship_name: str):
+        """
+        Returns ship by name if found else None
+        Args:
+            ship_name: ship name to filter by
+
+        Returns:
+            Ship instance if exists, else None
+        """
+        query = self._session.query(Ship).filter(Ship.name == ship_name)
+        queried_ship = query.first()
+        return queried_ship
+
+    def get_manufacturer_by_id(self, manufacturer_id: int):
+        """
+        Get ship manufactuerer by ID
+        Args:
+            manufacturer_id: manufacturer ID
+
+        Returns:
+            Manufacturer instance if found, otherwise None
+        """
+        query = self._session.query(Manufacturer).filter(Manufacturer.id == manufacturer_id)
+        queried_manufacturer = query.first()
+        return queried_manufacturer
 
     def get_ships(self) -> List[Ship]:
         """
         Retrieve list of Ship entities present in database
         """
-        self._update_table_by_provider_type(DataProviderType.SHIPS)
-        session = self._create_session()
-        ships = session.query(Ship).all()
-        session.close()
+        ships = self._session.query(Ship).all()
         return ships
 
     def __del__(self):
+        self._session.close()
         self._engine.dispose()
