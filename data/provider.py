@@ -11,6 +11,7 @@ class Expiry:
     """
     Class providing information about expiry
     """
+
     def __init__(self, last_updated: datetime, lifetime: timedelta):
         self.last_updated = last_updated
         self.lifetime = lifetime
@@ -23,7 +24,7 @@ class Expiry:
         """
         return self.last_updated + self.lifetime < datetime.now()
 
-    def expiry_date(self) -> Optional[datetime]:
+    def expires_in(self) -> Optional[timedelta]:
         """
         Returns the time left to expiry from now
         Returns:
@@ -31,15 +32,16 @@ class Expiry:
         """
         if self.is_expired():
             return None
-        return self.last_updated + self.lifetime
+        return self.last_updated + self.lifetime - datetime.now()
 
 
 class DataProvider:
     """
     Abstract base class providing functions to update itself and to retrieve its data.
     """
-    def __init__(self, data_lifetime: timedelta):
-        self.data_expiry = Expiry(datetime(1900, 1, 1, 1, 1, 1, 1), data_lifetime)
+
+    def __init__(self, last_loaded: datetime, data_lifetime: timedelta):
+        self.data_expiry = Expiry(last_loaded, data_lifetime)
         self._data = []
 
     @abstractmethod
@@ -65,6 +67,7 @@ class DataProviderType(Enum):
     """
     Enum for defining types of data providers
     """
+
     SHIPS = "Ships"
 
 
@@ -72,6 +75,7 @@ class DataProviderManager:
     """
     Class to manage data providers by their type
     """
+
     def __init__(self):
         self._data_providers = {}
 
@@ -88,7 +92,9 @@ class DataProviderManager:
             raise ValueError(f"provider for data type {data_type} not found.")
         return self._data_providers[data_type]
 
-    def add_data_provider(self, data_type: DataProviderType, data_provider: DataProvider) -> None:
+    def add_data_provider(
+        self, data_type: DataProviderType, data_provider: DataProvider
+    ) -> None:
         """
         Add data provider to manager if possible. Throws ValueError if already exists.
         Args:
