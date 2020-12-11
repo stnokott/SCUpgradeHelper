@@ -1,10 +1,11 @@
 """contains API classes"""
-from datetime import datetime, timedelta
-import logging
 import json
-import requests
+import logging
 from typing import List
 
+import requests
+
+from const import SHIP_DATA_EXPIRY
 from data.provider import DataProvider
 from db.entity import Ship, Manufacturer
 
@@ -87,26 +88,17 @@ class ShipDataProvider(DataProvider):
     Provides data about ships in concept, development or game
     """
 
-    __DATA_LIFETIME = timedelta(days=1)
-
     def __init__(self, scapi_instance: SCApi, logger: logging.Logger):
-        super().__init__(self.__DATA_LIFETIME)
+        super().__init__(SHIP_DATA_EXPIRY)
         self._scapi = scapi_instance
         self._logger = logger
 
-    def update(self) -> bool:
+    def _refresh_data(self) -> None:
         """
-        Updates underlying ship data if expired
-        Returns:
-            True if update performed, False otherwise
+        Updates underlying ship data
         """
-        if not self._is_data_expired():
-            self._logger.debug("Ship data not expired, skipping update.")
-            return False
-        self._logger.debug("Ship data expired.")
         self._data = self._scapi.get_ships()
-        self._last_fetched_datetime = datetime.now()
-        return True
+        self._update_expiry()
 
 
 class RequestUnsuccessfulException(Exception):

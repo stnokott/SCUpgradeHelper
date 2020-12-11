@@ -1,9 +1,12 @@
 """Manager for database entities"""
 
 import logging
+from datetime import datetime
+from typing import List, Optional
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from typing import List
+from sqlalchemy.sql.expression import func
 
 from const import DATABASE_FILEPATH
 from db.entity import Ship, Base, Manufacturer
@@ -71,6 +74,17 @@ class EntityManager:
 
         self._session.commit()
         self._logger.info("######### DONE #########")
+
+    def get_ships_loaddate(self) -> Optional[datetime]:
+        """
+        Gets smallest load date from ship database
+        Returns:
+            datetime of smallest load date
+        """
+        result = self._session.query(func.min(Ship.loaddate)).first()
+        if result is None:
+            return None
+        return result[0]
 
     def get_ship_by_name(self, ship_name: str):
         """
