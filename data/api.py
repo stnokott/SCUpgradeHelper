@@ -1,18 +1,19 @@
 """contains API classes"""
 from datetime import datetime, timedelta
 import logging
-from json.decoder import JSONDecodeError
+import json
 import requests
 from typing import List
 
 from data.provider import DataProvider
-from db.entity import Ship
+from db.entity import Ship, Manufacturer
 
 
 class SCApi:
     """
     Class to access endpoints exposed by http://starcitizen-api.com
     """
+
     __BASE_URL = "http://api.starcitizen-api.com"
 
     def __init__(self, api_key: str, logger: logging.Logger):
@@ -37,16 +38,27 @@ class SCApi:
             return []
 
     @classmethod
-    def _ships_from_json(cls, json: requests.models.Response) -> List[Ship]:
+    def _ships_from_json(cls, ships_json: json) -> List[Ship]:
         ships = []
-        for ship_json in json["data"]:
-            if ship_json is not None:
-                ships.append(cls._ship_from_json(ship_json))
+        for ships_json in ships_json["data"]:
+            if ships_json is not None:
+                ships.append(cls._ship_from_json(ships_json))
         return ships
 
     @classmethod
-    def _ship_from_json(cls, json: requests.models.Response):
-        return Ship(name=json["name"], manufacturer="TODO")
+    def _ship_from_json(cls, ship_json: json):
+        return Ship(
+            name=ship_json["name"],
+            manufacturer=cls._manufacturer_from_json(ship_json["manufacturer"]),
+        )
+
+    @classmethod
+    def _manufacturer_from_json(cls, manufacturer_json: json):
+        return Manufacturer(
+            id=int(manufacturer_json["id"]),
+            name=manufacturer_json["name"],
+            code=manufacturer_json["code"],
+        )
 
     def _url(self, endpoint: str, use_cache: bool) -> str:
         return f"{self.__BASE_URL}/{self._api_key}/v1/{'cache' if use_cache else 'live'}{endpoint}"
@@ -54,10 +66,12 @@ class SCApi:
     def _get(self, endpoint: str, use_cache: bool = True) -> requests.models.Response:
         request = requests.get(self._url(endpoint, use_cache))
         if request.status_code != 200:
-            raise RequestUnsuccessfulException(f"Status code {request.status_code} received durin call to {endpoint}")
+            raise RequestUnsuccessfulException(
+                f"Status code {request.status_code} received durin call to {endpoint}"
+            )
         try:
             response_json = request.json()
-        except JSONDecodeError as e:
+        except json.decoder.JSONDecodeError as e:
             raise RequestUnsuccessfulException(f"Error while decoding response: {e}")
         if "success" not in response_json or "message" not in response_json:
             raise RequestUnsuccessfulException("Unknown error")
@@ -72,6 +86,7 @@ class ShipDataProvider(DataProvider):
     """
     Provides data about ships in concept, development or game
     """
+
     __DATA_LIFETIME = timedelta(days=1)
 
     def __init__(self, scapi_instance: SCApi, logger: logging.Logger):
@@ -98,4 +113,5 @@ class RequestUnsuccessfulException(Exception):
     """
     Thrown if a HTTP request is unsuccessful
     """
+
     pass
