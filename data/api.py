@@ -1,6 +1,7 @@
 """contains API classes"""
 import json
 import logging
+from datetime import datetime
 from typing import List
 
 import requests
@@ -88,8 +89,10 @@ class ShipDataProvider(DataProvider):
     Provides data about ships in concept, development or game
     """
 
-    def __init__(self, scapi_instance: SCApi, logger: logging.Logger):
-        super().__init__(SHIP_DATA_EXPIRY)
+    def __init__(
+        self, scapi_instance: SCApi, last_loaded: datetime, logger: logging.Logger
+    ):
+        super().__init__(last_loaded, SHIP_DATA_EXPIRY)
         self._scapi = scapi_instance
         self._logger = logger
 

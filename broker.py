@@ -14,22 +14,30 @@ class SCDataBroker:
     """
     Broker communicating between DB and APIs
     """
+
     def __init__(self, logger: Logger, config: ConfigProvider):
         self._logger = logger
+        self._em = EntityManager(logger)
         self._scapi = SCApi(config.sc_api_key, logger)
         self._data_provider_manager = DataProviderManager()
-        self._data_provider_manager.add_data_provider(DataProviderType.SHIPS, ShipDataProvider(self._scapi, logger))
-        self._em = EntityManager(logger)
-        self._update_ships(True)
+        self._data_provider_manager.add_data_provider(
+            DataProviderType.SHIPS,
+            ShipDataProvider(self._scapi, self._em.get_ships_loaddate(), logger),
+        )
+        self._update_ships()
 
     def _update_ships(self, drop: bool = False) -> None:
-        ship_data_provider = self._data_provider_manager.get_data_provider(DataProviderType.SHIPS)
+        ship_data_provider = self._data_provider_manager.get_data_provider(
+            DataProviderType.SHIPS
+        )
         if ship_data_provider.data_expiry.is_expired():
             self._logger.info("Ship data expired, updating...")
             ships = ship_data_provider.get_data(True)
             self._em.update_ships(ships, drop)
         else:
-            self._logger.info(f"Ship data up-to-date until {ship_data_provider.data_expiry.expiry_date()}")
+            self._logger.info(
+                f"Ship data expires in {ship_data_provider.data_expiry.expires_in()}"
+            )
 
     def get_ships(self) -> List[Ship]:
         """
