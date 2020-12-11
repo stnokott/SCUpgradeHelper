@@ -1,7 +1,9 @@
 """Contains entity classes for ORM"""
+from datetime import datetime
+
+from sqlalchemy import event, Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, ForeignKey, Integer, String
 
 Base = declarative_base()
 
@@ -43,6 +45,7 @@ class Ship(Base):
     __tablename__ = "SHIPS"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    loaddate = Column(DateTime)
     name = Column(String, unique=True)
     manufacturer_id = Column(Integer, ForeignKey(Manufacturer.id))
 
@@ -67,6 +70,12 @@ class Ship(Base):
 
     def __repr__(self):
         return f"<{Ship.__name__}>({self.manufacturer.code} {self.name})"
+
+
+@event.listens_for(Ship, 'before_insert')
+@event.listens_for(Ship, 'before_update')
+def update_ship_loaddate(mapper, connection, target: Ship):
+    target.loaddate = datetime.now()
 
 
 Manufacturer.ships = relationship("Ship", order_by=Ship.id, back_populates="manufacturer", cascade="all")

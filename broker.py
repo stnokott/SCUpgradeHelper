@@ -1,11 +1,10 @@
 """Contains broker classes for communicating data between APIs and the database"""
+from logging import Logger
 from typing import List
 
 from config import ConfigProvider
 from const import SUPPRESS_ALL_LOGGING_FILTER
 from data.api import SCApi, ShipDataProvider
-from logging import Logger
-
 from data.provider import DataProviderManager, DataProviderType
 from db.entity import Ship
 from db.util import EntityManager
@@ -25,9 +24,12 @@ class SCDataBroker:
 
     def _update_ships(self, drop: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(DataProviderType.SHIPS)
-        ship_data_provider.update()
-        ships = ship_data_provider.get_data()
-        self._em.update_ships(ships, drop)
+        if ship_data_provider.data_expiry.is_expired():
+            self._logger.info("Ship data expired, updating...")
+            ships = ship_data_provider.get_data(True)
+            self._em.update_ships(ships, drop)
+        else:
+            self._logger.info(f"Ship data up-to-date until {ship_data_provider.data_expiry.expiry_date()}")
 
     def get_ships(self) -> List[Ship]:
         """
