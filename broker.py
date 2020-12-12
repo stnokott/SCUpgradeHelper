@@ -15,7 +15,7 @@ class SCDataBroker:
     Broker communicating between DB and APIs
     """
 
-    def __init__(self, logger: Logger, config: ConfigProvider, drop_data: bool = False):
+    def __init__(self, logger: Logger, config: ConfigProvider, force_update: bool = False, drop_data: bool = False):
         self._logger = logger
         self._em = EntityManager(logger)
         self._scapi = SCApi(config.sc_api_key, logger)
@@ -24,14 +24,17 @@ class SCDataBroker:
             DataProviderType.SHIPS,
             ShipDataProvider(self._scapi, self._em.get_ships_loaddate(), logger),
         )
-        self._update_ships(drop_data)
+        self._update_ships(force_update, drop_data)
 
-    def _update_ships(self, drop: bool = False) -> None:
+    def _update_ships(self, force: bool = False, drop: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(
             DataProviderType.SHIPS
         )
-        self._logger.info("Checking for ship data expiry...")
-        if ship_data_provider.data_expiry.is_expired():
+        if force:
+            self._logger.info("Invalidating ship data...")
+        else:
+            self._logger.info("Checking for ship data expiry...")
+        if ship_data_provider.data_expiry.is_expired() or force:
             self._logger.info(">>> Ship data expired, updating...")
             ships = ship_data_provider.get_data(True)
             self._em.update_manufacturers([ship.manufacturer for ship in ships], drop)
