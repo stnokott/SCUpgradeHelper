@@ -17,6 +17,7 @@ class Manufacturer(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, unique=True)
+    code = Column(String, unique=True)
 
     def copy_attrs_to(self, target: "Manufacturer") -> None:
         """
@@ -25,15 +26,16 @@ class Manufacturer(Base):
             target: receiver of this instance's values
         """
         target.name = self.name
+        target.code = self.code
 
     def __eq__(self, other):
-        return self.id == other.id and self.name == other.name
+        return self.id == other.id and self.name == other.name and self.code == other.code
 
     def __hash__(self):
-        return hash(("name", self.name))
+        return hash(("name", self.name, "code", self.code))
 
     def __repr__(self):
-        return f"<{Manufacturer.__name__}>({self.name})"
+        return f"<{Manufacturer.__name__}>({self.code}/{self.name})"
 
 
 class Ship(Base):
@@ -67,7 +69,7 @@ class Ship(Base):
         return hash(("name", self.name))
 
     def __repr__(self):
-        return f"<{Ship.__name__}>({self.manufacturer.name} {self.name})"
+        return f"<{Ship.__name__}>({self.manufacturer.code} {self.name})"
 
 
 @event.listens_for(Ship, "before_insert")

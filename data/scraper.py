@@ -1,34 +1,44 @@
 """Contains classes for scraping websites"""
+import logging
 from typing import List
 
 import requests
-from bs4 import BeautifulSoup
 
 from db.entity import Ship, Manufacturer
 
 
-class SCToolsScraper:
-    __SHIP_LIST_URL = "https://starcitizen.tools/List_of_pledge_vehicles"
+class RSIScraper:
+    __SHIP_LIST_URL = "https://robertsspaceindustries.com/ship-matrix/index"
+
+    def __init__(self, logger: logging.Logger):
+        self._logger = logger
 
     def get_ships(self) -> List[Ship]:
-        page = requests.get(self.__SHIP_LIST_URL)
-        soup = BeautifulSoup(page.content, "html.parser")
-        rows = soup.select("table tbody tr")
-        ships = []
-        for row in rows:
-            try:
-                name = row.select_one("td.data-name a").text
-                manufacturer_name = row.select_one("td.data-manufacturer a").text
-                price = row.select_one(
-                    "td.data-standalonecost div.data-standalonecost-value a"
-                ).text
-                # remove non-digit chars
-                numeric_filter = filter(str.isdigit, price)
-                price = int("".join(numeric_filter))
-
-                manufacturer = Manufacturer(name=manufacturer_name)
-                ship = Ship(name=name, price=price, manufacturer=manufacturer)
-                ships.append(ship)
-            except AttributeError:
-                continue
-        return ships
+        response = requests.get(self.__SHIP_LIST_URL)
+        if response.status_code != 200:
+            self._logger.warning(
+                f"Request to ship endpoint {self.__SHIP_LIST_URL} unsuccessful: {response.content}"
+            )
+            return []
+        try:
+            ships_json = response.json()["data"]
+            ships = []
+            for ship_json in ships_json:
+                manufacturer_json = ship_json["manufacturer"]
+                manufacturer = Manufacturer(
+                    id=manufacturer_json["id"],
+                    name=manufacturer_json["name"],
+                    code=manufacturer_json["code"],
+                )
+                ships.append(
+                    Ship(
+                        id=ship_json["id"],
+                        name=ship_json["name"],
+                        manufacturer_id=manufacturer.id,
+                        manufacturer=manufacturer,
+                    )
+                )
+            return ships
+        except AttributeError as e:
+            self._logger.warning(f"Error occured while parsing ships json: {e}")
+            return []
