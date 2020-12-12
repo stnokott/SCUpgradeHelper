@@ -8,6 +8,7 @@ import requests
 
 from const import SHIP_DATA_EXPIRY
 from data.provider import DataProvider
+from data.scraper import SCToolsScraper
 from db.entity import Ship, Manufacturer
 
 
@@ -57,9 +58,7 @@ class SCApi:
     @classmethod
     def _manufacturer_from_json(cls, manufacturer_json: json):
         return Manufacturer(
-            id=int(manufacturer_json["id"]),
-            name=manufacturer_json["name"],
-            code=manufacturer_json["code"],
+            id=int(manufacturer_json["id"]), name=manufacturer_json["name"]
         )
 
     def _url(self, endpoint: str, use_cache: bool) -> str:
@@ -95,7 +94,6 @@ class ShipDataProvider(DataProvider):
         super().__init__(last_loaded, SHIP_DATA_EXPIRY)
         self._scapi = scapi_instance
         self._logger = logger
-        from data.scraper import SCToolsScraper
 
         self._scraper = SCToolsScraper()
 
