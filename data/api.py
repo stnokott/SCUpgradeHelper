@@ -95,12 +95,16 @@ class ShipDataProvider(DataProvider):
         super().__init__(last_loaded, SHIP_DATA_EXPIRY)
         self._scapi = scapi_instance
         self._logger = logger
+        from data.scaper import SCToolsScraper
+
+        self._scraper = SCToolsScraper()
 
     def _refresh_data(self) -> None:
         """
         Updates underlying ship data
         """
-        self._data = self._scapi.get_ships()
+        # self._data = self._scapi.get_ships()
+        self._data = self._scraper.get_ships()
         self._update_expiry()
 
 
