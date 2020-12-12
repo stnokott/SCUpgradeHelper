@@ -15,9 +15,8 @@ class Manufacturer(Base):
 
     __tablename__ = "MANUFACTURERS"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, unique=True)
-    code = Column(String, unique=True)
 
     def copy_attrs_to(self, target: "Manufacturer") -> None:
         """
@@ -26,12 +25,12 @@ class Manufacturer(Base):
             target: receiver of this instance's values
         """
         target.name = self.name
-        target.code = self.code
 
     def __eq__(self, other):
-        return (
-                self.id == other.id and self.name == other.name and self.code == other.code
-        )
+        return self.id == other.id and self.name == other.name
+
+    def __hash__(self):
+        return hash(("name", self.name))
 
     def __repr__(self):
         return f"<{Manufacturer.__name__}>({self.name})"
@@ -47,14 +46,10 @@ class Ship(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     loaddate = Column(DateTime)
     name = Column(String, unique=True)
+    price = Column(Integer)
     manufacturer_id = Column(Integer, ForeignKey(Manufacturer.id))
 
-    manufacturer = relationship("Manufacturer", back_populates="ships")
-
-    def __init__(self, name: str, manufacturer: Manufacturer):
-        self.name = name
-        self.manufacturer_id = manufacturer.id
-        self.manufacturer = manufacturer
+    manufacturer = relationship("Manufacturer")
 
     def copy_attrs_to(self, target: "Ship") -> None:
         """
@@ -63,19 +58,24 @@ class Ship(Base):
             target: receiver of this instance's values
         """
         target.name = self.name
-        target.manufacturer_id = self.manufacturer_id
+        target.manufacturer = self.manufacturer
 
     def __eq__(self, other):
         return self.name == other.name and self.manufacturer_id == other.manufacturer_id
 
+    def __hash__(self):
+        return hash(("name", self.name))
+
     def __repr__(self):
-        return f"<{Ship.__name__}>({self.manufacturer.code} {self.name})"
+        return f"<{Ship.__name__}>({self.manufacturer.name} {self.name})"
 
 
-@event.listens_for(Ship, 'before_insert')
-@event.listens_for(Ship, 'before_update')
+@event.listens_for(Ship, "before_insert")
+@event.listens_for(Ship, "before_update")
 def update_ship_loaddate(mapper, connection, target: Ship):
     target.loaddate = datetime.now()
 
 
-Manufacturer.ships = relationship("Ship", order_by=Ship.id, back_populates="manufacturer", cascade="all")
+Manufacturer.ships = relationship(
+    "Ship", order_by=Ship.id, back_populates="manufacturer", cascade="all"
+)
