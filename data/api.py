@@ -8,7 +8,7 @@ import requests
 
 from const import SHIP_DATA_EXPIRY
 from data.provider import DataProvider
-from data.scraper import SCToolsScraper
+from data.scraper import RSIScraper
 from db.entity import Ship, Manufacturer
 
 
@@ -95,7 +95,8 @@ class ShipDataProvider(DataProvider):
         self._scapi = scapi_instance
         self._logger = logger
 
-        self._scraper = SCToolsScraper()
+        # self._scraper = SCToolsScraper()
+        self._scraper = RSIScraper(self._logger)
 
     def _refresh_data(self) -> None:
         """
