@@ -95,7 +95,7 @@ class ShipDataProvider(DataProvider):
         super().__init__(last_loaded, SHIP_DATA_EXPIRY)
         self._scapi = scapi_instance
         self._logger = logger
-        from data.scaper import SCToolsScraper
+        from data.scraper import SCToolsScraper
 
         self._scraper = SCToolsScraper()
 
