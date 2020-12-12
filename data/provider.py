@@ -22,6 +22,8 @@ class Expiry:
         Returns:
             True if expired, otherwise False
         """
+        if self.last_updated is None:
+            return True
         return self.last_updated + self.lifetime < datetime.now()
 
     def expires_in(self) -> Optional[timedelta]:
