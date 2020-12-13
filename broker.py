@@ -4,8 +4,8 @@ from typing import List
 
 from config import ConfigProvider
 from const import SUPPRESS_ALL_LOGGING_FILTER
-from data.api import SCApi, ShipDataProvider
-from data.provider import DataProviderManager, DataProviderType
+from data.api import SCApi
+from data.provider import DataProviderManager, DataProviderType, ShipDataProvider
 from db.entity import Ship
 from db.util import EntityManager
 

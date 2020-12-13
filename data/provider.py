@@ -1,10 +1,15 @@
 """Contains utility classes for providing data"""
+import logging
 from abc import abstractmethod
 from datetime import timedelta, datetime
 from enum import Enum
 from typing import List, Optional
 
 from sqlalchemy.schema import Table
+
+from const import SHIP_DATA_EXPIRY
+from data.api import SCApi
+from data.scraper import RSIScraper
 
 
 class Expiry:
@@ -106,3 +111,27 @@ class DataProviderManager:
         if data_type in self._data_providers:
             raise ValueError(f"Provider for type {data_type} already exists.")
         self._data_providers[data_type] = data_provider
+
+
+class ShipDataProvider(DataProvider):
+    """
+    Provides data about ships in concept, development or game
+    """
+
+    def __init__(
+        self, scapi_instance: SCApi, last_loaded: datetime, logger: logging.Logger
+    ):
+        super().__init__(last_loaded, SHIP_DATA_EXPIRY)
+        self._scapi = scapi_instance
+        self._logger = logger
+
+        # self._scraper = SCToolsScraper()
+        self._scraper = RSIScraper(self._logger)
+
+    def _refresh_data(self) -> None:
+        """
+        Updates underlying ship data
+        """
+        # self._data = self._scapi.get_ships()
+        self._data = self._scraper.get_ships()
+        self._update_expiry()

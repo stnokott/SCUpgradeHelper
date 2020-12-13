@@ -1,7 +1,7 @@
 """Contains entity classes for ORM"""
 from datetime import datetime
 
-from sqlalchemy import event, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import event, Column, ForeignKey, Integer, Float, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -16,7 +16,7 @@ class Manufacturer(Base):
     __tablename__ = "MANUFACTURERS"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, unique=True)
+    name = Column(String, unique=True, nullable=False)
     code = Column(String, unique=True)
 
     def copy_attrs_to(self, target: "Manufacturer") -> None:
@@ -25,11 +25,15 @@ class Manufacturer(Base):
         Args:
             target: receiver of this instance's values
         """
-        target.name = self.name
-        target.code = self.code
+        if self.name is not None:
+            target.name = self.name
+        if self.code is not None:
+            target.code = self.code
 
     def __eq__(self, other):
-        return self.id == other.id and self.name == other.name and self.code == other.code
+        return (
+            self.id == other.id and self.name == other.name and self.code == other.code
+        )
 
     def __hash__(self):
         return hash(("name", self.name, "code", self.code))
@@ -47,9 +51,9 @@ class Ship(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     loaddate = Column(DateTime)
-    name = Column(String, unique=True)
-    price = Column(Integer)
-    manufacturer_id = Column(Integer, ForeignKey(Manufacturer.id))
+    name = Column(String, unique=True, nullable=False)
+    standalone_price_usd = Column(Float)
+    manufacturer_id = Column(Integer, ForeignKey(Manufacturer.id), nullable=False)
 
     manufacturer = relationship("Manufacturer")
 
@@ -59,11 +63,21 @@ class Ship(Base):
         Args:
             target: receiver of this instance's values
         """
-        target.name = self.name
-        target.manufacturer = self.manufacturer
+        if self.name is not None:
+            target.name = self.name
+        if self.standalone_price_usd is not None:
+            target.standalone_price_usd = self.standalone_price_usd
+        if self.manufacturer_id is not None:
+            target.manufacturer_id = self.manufacturer_id
+        if self.manufacturer is not None:
+            target.manufacturer = self.manufacturer
 
     def __eq__(self, other):
-        return self.name == other.name and self.manufacturer_id == other.manufacturer_id
+        return (
+                self.name == other.name
+                and self.standalone_price_usd == other.standalone_price_usd
+                and self.manufacturer_id == other.manufacturer_id
+        )
 
     def __hash__(self):
         return hash(("name", self.name))

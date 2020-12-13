@@ -10,5 +10,5 @@ if __name__ == "__main__":
     logger.addHandler(logging.StreamHandler())
 
     config = ConfigProvider(logger)
-    broker = SCDataBroker(logger, config, force_update=True)
+    broker = SCDataBroker(logger, config)
     print(broker.get_ships())
