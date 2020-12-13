@@ -74,16 +74,17 @@ class Ship(Base):
 
     def __eq__(self, other):
         return (
-                self.name == other.name
-                and self.standalone_price_usd == other.standalone_price_usd
-                and self.manufacturer_id == other.manufacturer_id
+            self.name == other.name
+            and self.standalone_price_usd == other.standalone_price_usd
+            and self.manufacturer_id == other.manufacturer_id
         )
 
     def __hash__(self):
         return hash(("name", self.name))
 
     def __repr__(self):
-        return f"<{Ship.__name__}>({self.manufacturer.code} {self.name})"
+        return f"<{Ship.__name__}>({self.manufacturer.code} {self.name}" \
+               f"{' @$' + str(self.standalone_price_usd) if self.standalone_price_usd is not None else ''}) "
 
 
 @event.listens_for(Ship, "before_insert")
