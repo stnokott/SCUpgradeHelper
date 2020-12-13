@@ -1,14 +1,10 @@
 """contains API classes"""
 import json
 import logging
-from datetime import datetime
 from typing import List
 
 import requests
 
-from const import SHIP_DATA_EXPIRY
-from data.provider import DataProvider
-from data.scraper import RSIScraper
 from db.entity import Ship, Manufacturer
 
 
@@ -81,30 +77,6 @@ class SCApi:
         if "data" not in response_json:
             raise RequestUnsuccessfulException("No data found")
         return response_json
-
-
-class ShipDataProvider(DataProvider):
-    """
-    Provides data about ships in concept, development or game
-    """
-
-    def __init__(
-        self, scapi_instance: SCApi, last_loaded: datetime, logger: logging.Logger
-    ):
-        super().__init__(last_loaded, SHIP_DATA_EXPIRY)
-        self._scapi = scapi_instance
-        self._logger = logger
-
-        # self._scraper = SCToolsScraper()
-        self._scraper = RSIScraper(self._logger)
-
-    def _refresh_data(self) -> None:
-        """
-        Updates underlying ship data
-        """
-        # self._data = self._scapi.get_ships()
-        self._data = self._scraper.get_ships()
-        self._update_expiry()
 
 
 class RequestUnsuccessfulException(Exception):
