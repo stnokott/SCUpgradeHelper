@@ -3,13 +3,11 @@ import logging
 from abc import abstractmethod
 from datetime import timedelta, datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Tuple, Any
 
-from sqlalchemy.schema import Table
-
-from const import SHIP_DATA_EXPIRY
-from data.api import SCApi
+from const import SHIP_DATA_EXPIRY, UPGRADE_DATA_EXPIRY
 from data.scraper import RSIScraper
+from db.entity import Ship, Upgrade
 
 
 class Expiry:
@@ -47,9 +45,12 @@ class DataProvider:
     Abstract base class providing functions to update itself and to retrieve its data.
     """
 
-    def __init__(self, last_loaded: datetime, data_lifetime: timedelta):
+    def __init__(
+        self, initial_data: List[Any], last_loaded: datetime, data_lifetime: timedelta, logger: logging.Logger
+    ):
+        self._data = initial_data
         self.data_expiry = Expiry(last_loaded, data_lifetime)
-        self._data = []
+        self._logger = logger
 
     @abstractmethod
     def _refresh_data(self) -> None:
@@ -61,13 +62,31 @@ class DataProvider:
     def _update_expiry(self) -> None:
         self.data_expiry.last_updated = datetime.now()
 
-    def get_data(self, update: bool) -> List[Table]:
+    def get_data(self, force: bool = False) -> Tuple[List[Any], bool]:
         """
-        Retrieve this provider's data
+        Retrieve this data provider's data
+        Args:
+            force: forces refresh of data if True
+
+        Returns:
+            [0]: list of ORM entities
+            [1]: True if provider's data got updated, otherwise False
         """
-        if update:
+        self._logger.debug(f"{self.__class__.__name__} data requested.")
+        refreshed = False
+        if self.data_expiry.is_expired():
+            self._logger.debug(f">>> {self.__class__.__name__} data expired, updating...")
             self._refresh_data()
-        return self._data
+            refreshed = True
+        elif force:
+            self._logger.debug(f">>> Forcing {self.__class__.__name__} data update...")
+            self._refresh_data()
+            refreshed = True
+        else:
+            self._logger.debug(
+                f">>> Ship data valid, expires in {self.data_expiry.expires_in()}"
+            )
+        return self._data, refreshed
 
 
 class DataProviderType(Enum):
@@ -76,6 +95,7 @@ class DataProviderType(Enum):
     """
 
     SHIPS = "Ships"
+    UPGRADES = "Upgrades"
 
 
 class DataProviderManager:
@@ -118,20 +138,37 @@ class ShipDataProvider(DataProvider):
     Provides data about ships in concept, development or game
     """
 
-    def __init__(
-        self, scapi_instance: SCApi, last_loaded: datetime, logger: logging.Logger
-    ):
-        super().__init__(last_loaded, SHIP_DATA_EXPIRY)
-        self._scapi = scapi_instance
-        self._logger = logger
+    def __init__(self, initial_data: List[Ship], last_loaded: datetime, logger: logging.Logger):
+        super().__init__(initial_data, last_loaded, SHIP_DATA_EXPIRY, logger)
+        self.__scraper = RSIScraper(self._logger)
 
-        # self._scraper = SCToolsScraper()
+    def _refresh_data(self) -> None:
+        """
+        Updates underlying ship data
+        """
+        self._data = self.__scraper.get_ships()
+        self._update_expiry()
+
+
+class UpgradeDataProvider(DataProvider):
+    """
+    Provides data about ships in concept, development or game
+    """
+
+    def __init__(
+        self,
+        initial_data: List[Upgrade],
+        ship_data_provider: ShipDataProvider,
+        last_loaded: datetime,
+        logger: logging.Logger,
+    ):
+        super().__init__(initial_data, last_loaded, UPGRADE_DATA_EXPIRY, logger)
+        self.__ship_data_provider = ship_data_provider
         self._scraper = RSIScraper(self._logger)
 
     def _refresh_data(self) -> None:
         """
         Updates underlying ship data
         """
-        # self._data = self._scapi.get_ships()
-        self._data = self._scraper.get_ships()
+        self._data = self._scraper.get_upgrades(self.__ship_data_provider.get_data()[0])
         self._update_expiry()

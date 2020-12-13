@@ -74,17 +74,19 @@ class Ship(Base):
 
     def __eq__(self, other):
         return (
-                self.name == other.name
-                and self.official_sku_price_usd == other.official_sku_price_usd
-                and self.manufacturer_id == other.manufacturer_id
+            self.name == other.name
+            and self.official_sku_price_usd == other.official_sku_price_usd
+            and self.manufacturer_id == other.manufacturer_id
         )
 
     def __hash__(self):
         return hash(("name", self.name))
 
     def __repr__(self):
-        return f"<{Ship.__name__}>({self.manufacturer.code} {self.name}" \
-               f"{', $' + str(self.official_sku_price_usd) if self.official_sku_price_usd is not None else ''}) "
+        return (
+            f"<{Ship.__name__}>({self.manufacturer.code} {self.name}"
+            f"{', $' + str(self.official_sku_price_usd) if self.official_sku_price_usd is not None else ''})"
+        )
 
 
 @event.listens_for(Ship, "before_insert")
@@ -96,3 +98,54 @@ def update_ship_loaddate(mapper, connection, target: Ship):
 Manufacturer.ships = relationship(
     "Ship", order_by=Ship.id, back_populates="manufacturer", cascade="all"
 )
+
+
+class Upgrade(Base):
+    """
+    Entity representing a ship upgrade
+    """
+
+    __tablename__ = "UPGRADES"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    loaddate = Column(DateTime)
+    ship_from_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
+    ship_to_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
+    price_usd = Column(Float, nullable=False)
+    seller = Column(String, nullable=False)
+
+    ship_from = relationship("Ship", foreign_keys=[ship_from_id])
+    ship_to = relationship("Ship", foreign_keys=[ship_to_id])
+
+    def __eq__(self, other):
+        return (
+            self.ship_to_id == other.ship_to_id
+            and self.price_usd == other.price_usd
+            and self.seller == other.seller
+        )
+
+    def __hash__(self):
+        return hash(
+            (
+                "ship_from_id",
+                self.ship_from_id,
+                "ship_to_id",
+                self.ship_to_id,
+                "price_usd",
+                self.price_usd,
+                "seller",
+                self.seller,
+            )
+        )
+
+    def __repr__(self):
+        ship_from_name = self.ship_from.name if self.ship_from is not None else "?"
+        ship_to_name = self.ship_to.name if self.ship_to is not None else "?"
+        return f"<{Upgrade.__name__}>(From [{ship_from_name}] to [{ship_to_name}]: " \
+               f"${self.price_usd} @ {self.seller})"
+
+
+@event.listens_for(Upgrade, "before_insert")
+@event.listens_for(Upgrade, "before_update")
+def update_upgrade_loaddate(mapper, connection, target: Upgrade):
+    target.loaddate = datetime.now()

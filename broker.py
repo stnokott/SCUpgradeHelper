@@ -3,10 +3,14 @@ from logging import Logger
 from typing import List
 
 from config import ConfigProvider
-from const import SUPPRESS_ALL_LOGGING_FILTER
 from data.api import SCApi
-from data.provider import DataProviderManager, DataProviderType, ShipDataProvider
-from db.entity import Ship
+from data.provider import (
+    DataProviderManager,
+    DataProviderType,
+    ShipDataProvider,
+    UpgradeDataProvider,
+)
+from db.entity import Ship, Upgrade
 from db.util import EntityManager
 
 
@@ -15,42 +19,69 @@ class SCDataBroker:
     Broker communicating between DB and APIs
     """
 
-    def __init__(self, logger: Logger, config: ConfigProvider, force_update: bool = False, drop_data: bool = False):
+    def __init__(
+        self, logger: Logger, config: ConfigProvider, force_update: bool = False
+    ):
         self._logger = logger
         self._em = EntityManager(logger)
         self._scapi = SCApi(config.sc_api_key, logger)
         self._data_provider_manager = DataProviderManager()
+        ship_data_provider = ShipDataProvider(
+            self._em.get_ships(), self._em.get_ships_loaddate(), logger
+        )
         self._data_provider_manager.add_data_provider(
             DataProviderType.SHIPS,
-            ShipDataProvider(self._scapi, self._em.get_ships_loaddate(), logger),
+            ship_data_provider,
         )
-        self._update_ships(force_update, drop_data)
+        self._data_provider_manager.add_data_provider(
+            DataProviderType.UPGRADES,
+            UpgradeDataProvider(
+                self._em.get_upgrades(),
+                ship_data_provider,
+                self._em.get_upgrades_loaddate(),
+                logger,
+            ),
+        )
+        self._update_ships(force_update)
+        self._update_upgrades(force_update)
 
-    def _update_ships(self, force: bool = False, drop: bool = False) -> None:
+    def _update_ships(self, force: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(
             DataProviderType.SHIPS
         )
-        if force:
-            self._logger.info("Invalidating ship data...")
-        else:
-            self._logger.info("Checking for ship data expiry...")
-        if ship_data_provider.data_expiry.is_expired() or force:
-            self._logger.info(">>> Ship data expired, updating...")
-            ships = ship_data_provider.get_data(True)
-            self._em.update_manufacturers([ship.manufacturer for ship in ships], drop)
-            self._em.update_ships(ships, drop)
-        else:
-            self._logger.info(
-                f">>> Ship data valid, expires in {ship_data_provider.data_expiry.expires_in()}"
-            )
+        ships, updated = ship_data_provider.get_data(force)
+        if updated or force:
+            self._em.update_manufacturers([ship.manufacturer for ship in ships])
+            self._em.update_ships(ships)
 
-    def get_ships(self) -> List[Ship]:
+    def _update_upgrades(self, force: bool = False) -> None:
+        upgrade_data_provider = self._data_provider_manager.get_data_provider(
+            DataProviderType.UPGRADES
+        )
+        upgrades, updated = upgrade_data_provider.get_data(force)
+        if updated or force:
+            self._em.update_upgrades(upgrades)
+
+    def get_ships(self, force_update: bool = False) -> List[Ship]:
         """
         Get ships from database after updating expired API data
+        Args:
+            force_update: set to True to force update of underlying data
+
         Returns:
             list of ships
         """
-        self._logger.addFilter(SUPPRESS_ALL_LOGGING_FILTER)
-        self._update_ships()
-        self._logger.removeFilter(SUPPRESS_ALL_LOGGING_FILTER)
+        self._update_ships(force_update)
         return self._em.get_ships()
+
+    def get_upgrades(self, force_update: bool = False) -> List[Upgrade]:
+        """
+        Get upgrades from database after updating expired API data
+        Args:
+            force_update: set to True to force update of underlying data
+
+        Returns:
+            list of upgrades
+        """
+        self._update_upgrades(force_update)
+        return self._em.get_upgrades()

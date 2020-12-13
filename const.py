@@ -5,7 +5,8 @@ from logging import Filter
 DATABASE_FILEPATH = "database.db"
 CONFIG_FILEPATH = "config.ini"
 
-SHIP_DATA_EXPIRY = timedelta(days=1)
+SHIP_DATA_EXPIRY = timedelta(days=7)
+UPGRADE_DATA_EXPIRY = timedelta(days=1)
 
 
 class __SuppressAllLoggingFilter(Filter):
