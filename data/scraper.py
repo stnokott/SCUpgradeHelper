@@ -150,7 +150,7 @@ class RSIScraper:
             # reduce to one with smallest price
             sku_name = reduce((lambda sku1, sku2: sku1 if skus[sku1] < skus[sku2] else sku2), sku_candidates)
             new_price = skus[sku_name]
-            if ship.standalone_price_usd is not None and ship.standalone_price_usd != new_price:
-                self._logger.warning(f"Price for {ship} overwritten (old: {ship.standalone_price_usd}, new: {new_price}")
-            ship.standalone_price_usd = new_price
+            if ship.official_sku_price_usd is not None and ship.official_sku_price_usd != new_price:
+                self._logger.warning(f"Price for {ship} overwritten (old: {ship.official_sku_price_usd}, new: {new_price}")
+            ship.official_sku_price_usd = new_price
         return ships

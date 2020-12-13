@@ -52,7 +52,7 @@ class Ship(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     loaddate = Column(DateTime)
     name = Column(String, unique=True, nullable=False)
-    standalone_price_usd = Column(Float)
+    official_sku_price_usd = Column(Float)
     manufacturer_id = Column(Integer, ForeignKey(Manufacturer.id), nullable=False)
 
     manufacturer = relationship("Manufacturer")
@@ -65,8 +65,8 @@ class Ship(Base):
         """
         if self.name is not None:
             target.name = self.name
-        if self.standalone_price_usd is not None:
-            target.standalone_price_usd = self.standalone_price_usd
+        if self.official_sku_price_usd is not None:
+            target.official_sku_price_usd = self.official_sku_price_usd
         if self.manufacturer_id is not None:
             target.manufacturer_id = self.manufacturer_id
         if self.manufacturer is not None:
@@ -74,9 +74,9 @@ class Ship(Base):
 
     def __eq__(self, other):
         return (
-            self.name == other.name
-            and self.standalone_price_usd == other.standalone_price_usd
-            and self.manufacturer_id == other.manufacturer_id
+                self.name == other.name
+                and self.official_sku_price_usd == other.official_sku_price_usd
+                and self.manufacturer_id == other.manufacturer_id
         )
 
     def __hash__(self):
@@ -84,7 +84,7 @@ class Ship(Base):
 
     def __repr__(self):
         return f"<{Ship.__name__}>({self.manufacturer.code} {self.name}" \
-               f"{' @$' + str(self.standalone_price_usd) if self.standalone_price_usd is not None else ''}) "
+               f"{', $' + str(self.official_sku_price_usd) if self.official_sku_price_usd is not None else ''}) "
 
 
 @event.listens_for(Ship, "before_insert")
