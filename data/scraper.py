@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from praw.models import Submission
 from requests import Session
 
-from db.entity import Ship, Manufacturer, Upgrade
+from db.entity import Ship, Manufacturer, Upgrade, Standalone
 
 
 class RedditScraper:
@@ -78,6 +78,7 @@ class RSIScraper:
 
     def __init__(self, logger: logging.Logger):
         self._logger = logger
+        self._ships = None
 
     def get_ships(self) -> List[Ship]:
         """
@@ -99,13 +100,56 @@ class RSIScraper:
                     self.ship_from_json(ship_json)
                     for ship_json in response.json()["data"]
                 ]
-                available_skus = self.get_skus()
-                ships = self.apply_skus_to_ships(ships, available_skus)
             except KeyError as e:
                 self._logger.warning(f">> Error occured while parsing ships json: {e}")
         self._logger.info(f">>> {len(ships)} ships retrieved from {self.__STORE_NAME}.")
         self._logger.info("########### DONE ###########")
+        self._ships = ships
         return ships
+
+    def get_standalones(self, ships: List[Ship]) -> List[Standalone]:
+        """
+        Retrieve official RSI standalone ship purchases
+        Args:
+            ships: ship list to associate ship names
+
+        Returns:
+            list of standalones
+        """
+        return self.create_standalones(ships, self.get_skus())
+
+    def create_standalones(
+        self, ships: List[Ship], skus: Dict[str, float]
+    ) -> List[Standalone]:
+        """
+        Overwrites ship prices with list of sku prices, if found in sku list
+        Args:
+            ships: list of ships to process
+            skus: dict of skus to apply
+
+        Returns:
+            altered list of ships
+        """
+        standalones = []
+        sku_ship_names = skus.keys()
+        for ship in ships:
+            # find fitting sku candidates
+            sku_candidates = list(
+                filter(
+                    lambda sku_ship_name: ship.name in sku_ship_name,
+                    sku_ship_names,
+                )
+            )
+            if len(sku_candidates) == 0:
+                continue
+            # reduce to one with smallest price
+            sku_name = reduce(
+                (lambda sku1, sku2: sku1 if skus[sku1] < skus[sku2] else sku2),
+                sku_candidates,
+            )
+            new_price = skus[sku_name]
+            standalones.append(Standalone(ship_id=ship.id, price_usd=new_price, store_name=self.__STORE_NAME))
+        return standalones
 
     def get_skus(self) -> Dict[str, float]:
         """
@@ -158,45 +202,6 @@ class RSIScraper:
                 self._logger.warning(f"Error occured while parsing sku json: {e}")
                 return skus
         return skus
-
-    def apply_skus_to_ships(
-        self, ships: List[Ship], skus: Dict[str, float]
-    ) -> List[Ship]:
-        """
-        Overwrites ship prices with list of sku prices, if found in sku list
-        Args:
-            ships: list of ships to process
-            skus: dict of skus to apply
-
-        Returns:
-            altered list of ships
-        """
-        sku_ship_names = skus.keys()
-        for ship in ships:
-            # find fitting sku candidates
-            sku_candidates = list(
-                filter(
-                    lambda sku_ship_name: ship.name in sku_ship_name,
-                    sku_ship_names,
-                )
-            )
-            if len(sku_candidates) == 0:
-                continue
-            # reduce to one with smallest price
-            sku_name = reduce(
-                (lambda sku1, sku2: sku1 if skus[sku1] < skus[sku2] else sku2),
-                sku_candidates,
-            )
-            new_price = skus[sku_name]
-            if (
-                ship.official_sku_price_usd is not None
-                and ship.official_sku_price_usd != new_price
-            ):
-                self._logger.warning(
-                    f"Price for {ship} overwritten (old: {ship.official_sku_price_usd}, new: {new_price}"
-                )
-            ship.official_sku_price_usd = new_price
-        return ships
 
     def get_upgrades(self, from_ships: List[Ship]) -> List[Upgrade]:
         """
@@ -325,7 +330,7 @@ class RSIScraper:
             ship_from_id=int(from_id),
             ship_to_id=int(upgrade_json["id"]),
             price_usd=float(int(cheapest_upgrade["upgradePrice"]) / 100),
-            seller=cls.__STORE_NAME,
+            store_name=cls.__STORE_NAME,
         )
 
 

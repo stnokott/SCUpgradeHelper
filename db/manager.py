@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import func
 
 from const import DATABASE_FILEPATH
-from db.entity import Ship, Base, Manufacturer, Upgrade
+from db.entity import Ship, Base, Manufacturer, Upgrade, Standalone
 from util import StatusString
 
 
@@ -36,7 +36,7 @@ class EntityManager:
             return
         entity_type = entities[0].__class__
         entity_type_name = entity_type.__name__
-        status = StatusString(entity_type_name)
+        status = StatusString(f"PROCESSING {entity_type_name.upper()}S")
         self._logger.info(status.get_status_str())
         existing_entities = self._get_entities(entity_type)
         entities_set = set(entities)
@@ -61,7 +61,7 @@ class EntityManager:
         new_count = 0
         for entity in entities_set:
             if entity not in existing_entities:
-                self._session.add(entity)
+                self._session.merge(entity)
                 self._logger.debug(f">>> Adding {entity}.")
                 new_count += 1
         if new_count > 0:
@@ -93,6 +93,14 @@ class EntityManager:
         """
         self._update_entities(ships)
 
+    def update_standalones(self, standalones: List[Standalone]):
+        """
+        Inserts standalones into database, updates if existing
+        Args:
+            standalones: list of standalones to process
+        """
+        self._update_entities(standalones)
+
     def update_upgrades(self, upgrades: List[Upgrade]) -> None:
         """
         Inserts upgrades into database, updates if existing
@@ -115,6 +123,13 @@ class EntityManager:
         """
         return self._get_entities(Ship)
 
+    def get_standalones(self) -> List[Standalone]:
+        """
+        Returns:
+            All standalone entities in database
+        """
+        return self._get_entities(Standalone)
+
     def get_upgrades(self) -> List[Upgrade]:
         """
         Returns:
@@ -129,6 +144,17 @@ class EntityManager:
             datetime of smallest load date
         """
         result = self._session.query(func.min(Ship.loaddate)).first()
+        if result is None:
+            return None
+        return result[0]
+
+    def get_standalones_loaddate(self) -> Optional[datetime]:
+        """
+        Gets smallest load date from standalones database
+        Returns:
+            datetime of smallest load date
+        """
+        result = self._session.query(func.min(Standalone.loaddate)).first()
         if result is None:
             return None
         return result[0]

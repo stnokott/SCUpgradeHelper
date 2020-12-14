@@ -7,7 +7,7 @@ from typing import List, Tuple, Any
 
 from const import SHIP_DATA_EXPIRY, UPGRADE_DATA_EXPIRY
 from data.scraper import RSIScraper
-from db.entity import Ship, Upgrade
+from db.entity import Ship, Upgrade, Standalone
 from util import format_timedelta
 
 
@@ -97,6 +97,7 @@ class DataProviderType(Enum):
     """
 
     SHIPS = "Ships"
+    STANDALONES = "Standalones"
     UPGRADES = "Upgrades"
 
 
@@ -152,9 +153,33 @@ class ShipDataProvider(DataProvider):
         self._update_expiry()
 
 
+class StandaloneDataProvider(DataProvider):
+    """
+    Provides data about standalone ship offers
+    """
+
+    def __init__(
+        self,
+        initial_data: List[Standalone],
+        ship_data_provider: ShipDataProvider,
+        last_loaded: datetime,
+        logger: logging.Logger,
+    ):
+        super().__init__(initial_data, last_loaded, UPGRADE_DATA_EXPIRY, logger)
+        self.__ship_data_provider = ship_data_provider
+        self._scraper = RSIScraper(self._logger)
+
+    def _refresh_data(self) -> None:
+        """
+        Updates underlying ship data
+        """
+        self._data = self._scraper.get_standalones(self.__ship_data_provider.get_data()[0])
+        self._update_expiry()
+
+
 class UpgradeDataProvider(DataProvider):
     """
-    Provides data about ships in concept, development or game
+    Provides data about ship upgrades
     """
 
     def __init__(

@@ -52,7 +52,6 @@ class Ship(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     loaddate = Column(DateTime)
     name = Column(String, unique=True, nullable=False)
-    official_sku_price_usd = Column(Float)
     manufacturer_id = Column(Integer, ForeignKey(Manufacturer.id), nullable=False)
 
     manufacturer = relationship("Manufacturer")
@@ -65,8 +64,6 @@ class Ship(Base):
         """
         if self.name is not None:
             target.name = self.name
-        if self.official_sku_price_usd is not None:
-            target.official_sku_price_usd = self.official_sku_price_usd
         if self.manufacturer_id is not None:
             target.manufacturer_id = self.manufacturer_id
         if self.manufacturer is not None:
@@ -75,7 +72,6 @@ class Ship(Base):
     def __eq__(self, other):
         return (
             self.name == other.name
-            and self.official_sku_price_usd == other.official_sku_price_usd
             and self.manufacturer_id == other.manufacturer_id
         )
 
@@ -85,7 +81,6 @@ class Ship(Base):
     def __repr__(self):
         return (
             f"<{Ship.__name__}>({self.manufacturer.code} {self.name}"
-            f"{', $' + str(self.official_sku_price_usd) if self.official_sku_price_usd is not None else ''})"
         )
 
 
@@ -100,6 +95,51 @@ Manufacturer.ships = relationship(
 )
 
 
+class Standalone(Base):
+    """
+    Entity representing a purchase that gives you a ship directly
+    """
+
+    __tablename__ = "STANDALONE"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    loaddate = Column(DateTime)
+    ship_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
+    price_usd = Column(Float, nullable=False)
+    store_name = Column(String, nullable=False)
+
+    ship = relationship("Ship")
+
+    def __eq__(self, other):
+        return (
+                self.ship_id == other.ship_id
+                and self.price_usd == other.price_usd
+                and self.store_name == other.store_name
+        )
+
+    def __hash__(self):
+        return hash(
+            (
+                "ship_id",
+                self.ship_id,
+                "price_usd",
+                self.price_usd,
+                "store_name",
+                self.store_name,
+            )
+        )
+
+    def __repr__(self):
+        ship_name = self.ship.name if self.ship is not None else self.ship_id
+        return f"<{Standalone.__name__}>({ship_name}: ${self.price_usd} @ {self.store_name})"
+
+
+@event.listens_for(Standalone, "before_insert")
+@event.listens_for(Standalone, "before_update")
+def update_standalone_loaddate(mapper, connection, target: Standalone):
+    target.loaddate = datetime.now()
+
+
 class Upgrade(Base):
     """
     Entity representing a ship upgrade
@@ -112,17 +152,17 @@ class Upgrade(Base):
     ship_from_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
     ship_to_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
     price_usd = Column(Float, nullable=False)
-    seller = Column(String, nullable=False)
+    store_name = Column(String, nullable=False)
 
     ship_from = relationship("Ship", foreign_keys=[ship_from_id])
     ship_to = relationship("Ship", foreign_keys=[ship_to_id])
 
     def __eq__(self, other):
         return (
-            self.ship_from_id == other.ship_from_id
-            and self.ship_to_id == other.ship_to_id
-            and self.price_usd == other.price_usd
-            and self.seller == other.seller
+                self.ship_from_id == other.ship_from_id
+                and self.ship_to_id == other.ship_to_id
+                and self.price_usd == other.price_usd
+                and self.store_name == other.store_name
         )
 
     def __hash__(self):
@@ -134,8 +174,8 @@ class Upgrade(Base):
                 self.ship_to_id,
                 "price_usd",
                 self.price_usd,
-                "seller",
-                self.seller,
+                "store_name",
+                self.store_name,
             )
         )
 
@@ -143,7 +183,7 @@ class Upgrade(Base):
         ship_from_name = self.ship_from.name if self.ship_from is not None else self.ship_from_id
         ship_to_name = self.ship_to.name if self.ship_to is not None else self.ship_to_id
         return f"<{Upgrade.__name__}>(From [{ship_from_name}] to [{ship_to_name}]: " \
-               f"${self.price_usd} @ {self.seller})"
+               f"${self.price_usd} @ {self.store_name})"
 
 
 @event.listens_for(Upgrade, "before_insert")

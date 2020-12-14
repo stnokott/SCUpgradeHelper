@@ -9,6 +9,7 @@ from data.provider import (
     DataProviderType,
     ShipDataProvider,
     UpgradeDataProvider,
+    StandaloneDataProvider,
 )
 from db.entity import Ship, Upgrade
 from db.manager import EntityManager
@@ -34,6 +35,15 @@ class SCDataBroker:
             ship_data_provider,
         )
         self._data_provider_manager.add_data_provider(
+            DataProviderType.STANDALONES,
+            StandaloneDataProvider(
+                self._em.get_standalones(),
+                ship_data_provider,
+                self._em.get_standalones_loaddate(),
+                logger,
+            ),
+        )
+        self._data_provider_manager.add_data_provider(
             DataProviderType.UPGRADES,
             UpgradeDataProvider(
                 self._em.get_upgrades(),
@@ -42,16 +52,20 @@ class SCDataBroker:
                 logger,
             ),
         )
-        self._update_ships(force_update, True)
-        self._update_upgrades(force_update, True)
+        self.complete_update(force_update, True)
 
-    def force_complete_update(self) -> None:
+    def complete_update(self, force: bool = False, echo: bool = False) -> None:
         """
         Forces complete update of all underlying data.
         Very expensive operation, use sparingly!
+
+        Args:
+            force: True if forcing update
+            echo: True if logging needed
         """
-        self._update_ships(force=True, echo=True)
-        self._update_upgrades(force=True, echo=True)
+        self._update_ships(force, echo)
+        self._update_standalones(force, echo)
+        self._update_upgrades(force, echo)
 
     def _update_ships(self, force: bool = False, echo: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(
@@ -61,6 +75,14 @@ class SCDataBroker:
         if updated or force:
             self._em.update_manufacturers([ship.manufacturer for ship in ships])
             self._em.update_ships(ships)
+
+    def _update_standalones(self, force: bool = False, echo: bool = False) -> None:
+        standalone_data_provider = self._data_provider_manager.get_data_provider(
+            DataProviderType.STANDALONES
+        )
+        standalones, updated = standalone_data_provider.get_data(force, echo)
+        if updated or force:
+            self._em.update_standalones(standalones)
 
     def _update_upgrades(self, force: bool = False, echo: bool = False) -> None:
         upgrade_data_provider = self._data_provider_manager.get_data_provider(
