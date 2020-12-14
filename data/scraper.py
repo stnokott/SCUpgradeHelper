@@ -266,9 +266,9 @@ class RSIScraper:
             available_upgrades,
         )
         return Upgrade(
-            ship_from_id=from_id,
-            ship_to_id=upgrade_json["id"],
-            price_usd=int(cheapest_upgrade["upgradePrice"])/100,
+            ship_from_id=int(from_id),
+            ship_to_id=int(upgrade_json["id"]),
+            price_usd=float(int(cheapest_upgrade["upgradePrice"])/100),
             seller=cls.__STORE_NAME
         )
 
