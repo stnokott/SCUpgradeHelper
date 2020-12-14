@@ -42,23 +42,23 @@ class SCDataBroker:
                 logger,
             ),
         )
-        self._update_ships(force_update)
-        self._update_upgrades(force_update)
+        self._update_ships(force_update, True)
+        self._update_upgrades(force_update, True)
 
-    def _update_ships(self, force: bool = False) -> None:
+    def _update_ships(self, force: bool = False, echo: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(
             DataProviderType.SHIPS
         )
-        ships, updated = ship_data_provider.get_data(force)
+        ships, updated = ship_data_provider.get_data(force, echo)
         if updated or force:
             self._em.update_manufacturers([ship.manufacturer for ship in ships])
             self._em.update_ships(ships)
 
-    def _update_upgrades(self, force: bool = False) -> None:
+    def _update_upgrades(self, force: bool = False, echo: bool = False) -> None:
         upgrade_data_provider = self._data_provider_manager.get_data_provider(
             DataProviderType.UPGRADES
         )
-        upgrades, updated = upgrade_data_provider.get_data(force)
+        upgrades, updated = upgrade_data_provider.get_data(force, echo)
         if updated or force:
             self._em.update_upgrades(upgrades)
 

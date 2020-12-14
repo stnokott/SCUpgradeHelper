@@ -62,11 +62,12 @@ class DataProvider:
     def _update_expiry(self) -> None:
         self.data_expiry.last_updated = datetime.now()
 
-    def get_data(self, force: bool = False) -> Tuple[List[Any], bool]:
+    def get_data(self, force: bool = False, echo: bool = False) -> Tuple[List[Any], bool]:
         """
         Retrieve this data provider's data
         Args:
             force: forces refresh of data if True
+            echo: produces info logs if True
 
         Returns:
             [0]: list of ORM entities
@@ -75,16 +76,16 @@ class DataProvider:
         self._logger.debug(f"{self.__class__.__name__} data requested.")
         refreshed = False
         if self.data_expiry.is_expired():
-            self._logger.debug(f">>> {self.__class__.__name__} data expired, updating...")
+            self._logger.info(f">>> {self.__class__.__name__} data expired, updating...")
             self._refresh_data()
             refreshed = True
         elif force:
-            self._logger.debug(f">>> Forcing {self.__class__.__name__} data update...")
+            self._logger.info(f">>> Forcing {self.__class__.__name__} data update...")
             self._refresh_data()
             refreshed = True
-        else:
-            self._logger.debug(
-                f">>> Ship data valid, expires in {self.data_expiry.expires_in()}"
+        elif echo:
+            self._logger.info(
+                f">>> {self.__class__.__name__} data valid, expires in {self.data_expiry.expires_in()}"
             )
         return self._data, refreshed
 
