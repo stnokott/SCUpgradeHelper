@@ -11,4 +11,3 @@ if __name__ == "__main__":
 
     config = ConfigProvider(logger)
     broker = SCDataBroker(logger, config)
-    print(broker.get_ships())
