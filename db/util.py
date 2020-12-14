@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Type
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -18,9 +18,7 @@ class EntityManager:
     """
 
     def __init__(self, logger: logging.Logger):
-        self._engine = create_engine(
-            f"sqlite:///{DATABASE_FILEPATH}", echo=False
-        )
+        self._engine = create_engine(f"sqlite:///{DATABASE_FILEPATH}", echo=False)
         self._session = Session(bind=self._engine, expire_on_commit=False)
         self._logger = logger
         self._create_schema()
@@ -29,86 +27,107 @@ class EntityManager:
         self._logger.debug("Applying database schemata...")
         Base.metadata.create_all(self._engine)
 
-    def update_manufacturers(
-        self, manufacturers: List[Manufacturer]
-    ) -> None:
-        """
-        Insert manufacturers or update if existing
-        Args:
-            manufacturers: manufacturers to process
-        """
-        existing_manufacturers = self.get_manufacturers()
-        manufacturers_set = set(manufacturers)
+    def _update_entities(self, entities: List[Type[Base]]) -> None:
+        if len(entities) == 0:
+            self._logger.info(
+                f">>> No entities passed to {self._update_entities.__name__}."
+            )
+            return
+        entity_type = entities[0].__class__
+        entity_type_name = entity_type.__name__
+        status_str = f"PROCESSING {entity_type_name}s"
+        self._logger.info(f"### {status_str} ###")
+        existing_entities = self._get_entities(entity_type)
+        entities_set = set(entities)
 
-        # delete invalid manufacturers first
+        # delete invalid entities first
         deleted_count = 0
-        for manufacturer in existing_manufacturers:
-            if manufacturer not in manufacturers_set:
-                self._session.delete(manufacturer)
-                self._logger.debug(f">>> Removing {manufacturer}.")
+        for entity in existing_entities:
+            if entity not in entities_set:
+                self._session.delete(entity)
+                self._logger.debug(f">>> Removing {entity}.")
                 deleted_count += 1
         if deleted_count > 0:
-            self._logger.info(f">>> Removed {deleted_count} invalid manufacturers from database.")
+            self._logger.info(
+                f">>> Removed {deleted_count} invalid {entity_type_name}(s) from database."
+            )
         else:
-            self._logger.info(">>> No invalid manufacturers in database detected.")
+            self._logger.info(
+                f">>> No invalid {entity_type_name}(s) in database detected."
+            )
 
-        # add new manufacturers
+        # add new entities
         new_count = 0
-        for manufacturer in manufacturers_set:
-            if manufacturer not in existing_manufacturers:
-                self._session.add(manufacturer)
-                self._logger.debug(f">>> Adding {manufacturer}.")
+        for entity in entities_set:
+            if entity not in existing_entities:
+                self._session.add(entity)
+                self._logger.debug(f">>> Adding {entity}.")
                 new_count += 1
         if new_count > 0:
-            self._logger.info(f">>> Added {new_count} new manufacturers to database.")
+            self._logger.info(
+                f">>> Added {new_count} new {entity_type_name}(s) to database."
+            )
         else:
-            self._logger.info(">>> No new manufacturers detected.")
+            self._logger.info(f">>> No new {entity_type_name}(s) detected.")
 
         self._session.commit()
-        self._logger.debug("############# DONE #############")
+        self._logger.info(self.__get_status_done_str(status_str))
 
-    def get_manufacturers(self) -> List[Manufacturer]:
-        return self._session.query(Manufacturer).all()
+    @classmethod
+    def __get_status_done_str(cls, status: str):
+        __DONE_STR = "DONE"
+        if len(status) < 4:
+            return f"### {__DONE_STR} ###"
+        surrounding_hashs = round((len(status) - len(__DONE_STR)) / 2) * "#"
+        return f"###{surrounding_hashs} {__DONE_STR} {surrounding_hashs}###"
+
+    def _get_entities(self, table_class: Type[Base]):
+        return self._session.query(table_class).all()
+
+    def update_manufacturers(self, manufacturers: List[Manufacturer]) -> None:
+        """
+        Inserts manufacturers into database, updates if existing
+        Args:
+            manufacturers: list of manufacturers to process
+        """
+        self._update_entities(manufacturers)
 
     def update_ships(self, ships: List[Ship]) -> None:
         """
-        Insert ships
+        Inserts ships into database, updates if existing
         Args:
-            ships: ships to process
+            ships: list of ships to process
         """
-        self._logger.info("### PROCESSING SHIPS ###")
-        existing_ships = self.get_ships()
-        ships_set = set(ships)
+        self._update_entities(ships)
 
-        self._logger.debug(">>> Applying manufacturers from database...")
-        self.update_manufacturers([ship.manufacturer for ship in ships_set])
+    def update_upgrades(self, upgrades: List[Upgrade]) -> None:
+        """
+        Inserts upgrades into database, updates if existing
+        Args:
+            upgrades: list of upgrades to process
+        """
+        self._update_entities(upgrades)
 
-        # delete invalid ships first
-        deleted_count = 0
-        for ship in existing_ships:
-            if ship not in ships_set:
-                self._session.delete(ship)
-                self._logger.debug(f">>> Removing {ship}.")
-                deleted_count += 1
-        if deleted_count > 0:
-            self._logger.info(f">>> Removed {deleted_count} invalid ships from database.")
-        else:
-            self._logger.info(">>> No invalid ships in database detected.")
+    def get_manufacturers(self) -> List[Manufacturer]:
+        """
+        Returns:
+            All manufacturer entities in database
+        """
+        return self._get_entities(Manufacturer)
 
-        # add new ships
-        new_count = 0
-        for ship in ships_set:
-            if ship not in existing_ships:
-                self._session.add(ship)
-                self._logger.debug(f">>> Adding {ship}.")
-                new_count += 1
-        if new_count > 0:
-            self._logger.info(f">>> Added {new_count} new ships to database.")
-        else:
-            self._logger.info(">>> No new ships detected.")
+    def get_ships(self) -> List[Ship]:
+        """
+        Returns:
+            All ship entities in database
+        """
+        return self._get_entities(Ship)
 
-        self._session.commit()
-        self._logger.info("######### DONE #########")
+    def get_upgrades(self) -> List[Upgrade]:
+        """
+        Returns:
+            All upgrade entities in database
+        """
+        return self._get_entities(Upgrade)
 
     def get_ships_loaddate(self) -> Optional[datetime]:
         """
@@ -121,44 +140,6 @@ class EntityManager:
             return None
         return result[0]
 
-    def get_ships(self) -> List[Ship]:
-        """
-        Retrieve list of Ship entities present in database
-        """
-        ships = self._session.query(Ship).all()
-        return ships
-
-    def update_upgrades(self, upgrades: List[Upgrade]) -> None:
-        """
-        Insert upgrades
-        Args:
-            upgrades: upgrades to process
-        """
-        self._logger.info("### PROCESSING UPGRADES ###")
-        existing_upgrades = self.get_upgrades()
-        upgrades_set = set(upgrades)
-
-        # delete invalid upgrades first
-        deleted_count = 0
-        for upgrade in existing_upgrades:
-            if upgrade not in upgrades_set:
-                self._session.delete(upgrade)
-                self._logger.debug(f">>> Removing {upgrade}")
-                deleted_count += 1
-        self._logger.info(f">>> Removed {deleted_count} invalid upgrades from database.")
-
-        # add new upgrades
-        new_count = 0
-        for upgrade in upgrades_set:
-            if upgrade not in existing_upgrades:
-                self._session.add(upgrade)
-                self._logger.debug(f">>> Adding {upgrade}")
-                new_count += 1
-        self._logger.info(f">>> Added {new_count} new upgrades to database.")
-
-        self._session.commit()
-        self._logger.info("########## DONE ###########")
-
     def get_upgrades_loaddate(self) -> Optional[datetime]:
         """
         Gets smallest load date from upgrades database
@@ -169,13 +150,6 @@ class EntityManager:
         if result is None:
             return None
         return result[0]
-
-    def get_upgrades(self) -> List[Upgrade]:
-        """
-        Retrieve list of Upgrade entities present in database
-        """
-        ships = self._session.query(Upgrade).all()
-        return ships
 
     def __del__(self):
         self._session.close()
