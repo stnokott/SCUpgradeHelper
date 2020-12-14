@@ -3,11 +3,12 @@ import logging
 from abc import abstractmethod
 from datetime import timedelta, datetime
 from enum import Enum
-from typing import List, Optional, Tuple, Any
+from typing import List, Tuple, Any
 
 from const import SHIP_DATA_EXPIRY, UPGRADE_DATA_EXPIRY
 from data.scraper import RSIScraper
 from db.entity import Ship, Upgrade
+from util import format_timedelta
 
 
 class Expiry:
@@ -29,15 +30,15 @@ class Expiry:
             return True
         return self.last_updated + self.lifetime < datetime.now()
 
-    def expires_in(self) -> Optional[timedelta]:
+    def expires_in(self) -> str:
         """
         Returns the time left to expiry from now
         Returns:
             timedelta representing the time left to expiry
         """
         if self.is_expired():
-            return None
-        return self.last_updated + self.lifetime - datetime.now()
+            return "(not expired)"
+        return format_timedelta(self.last_updated + self.lifetime - datetime.now())
 
 
 class DataProvider:
