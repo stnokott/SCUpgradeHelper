@@ -53,7 +53,7 @@ class RSIScraper:
                     self.ship_from_json(ship_json) for ship_json in response.json()["data"]
                 ]
                 available_skus = self.get_skus()
-                return self.apply_skus_to_ships(ships, available_skus)
+                ships = self.apply_skus_to_ships(ships, available_skus)
             except KeyError as e:
                 self._logger.warning(f">> Error occured while parsing ships json: {e}")
         self._logger.info(f">>> {len(ships)} ships retrieved from {self.__STORE_NAME}.")
