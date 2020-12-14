@@ -149,20 +149,24 @@ class EntityManager:
             upgrades: upgrades to process
         """
         self._logger.info("### PROCESSING UPGRADES ###")
-        self._logger.debug(">>> Removing duplicates...")
-        upgrades = set(upgrades)
+        existing_upgrades = self.get_upgrades()
+        upgrades_set = set(upgrades)
 
-        # TODO: dont always drop
-        # drop existing data first
-        self._logger.debug(f"Dropping {Upgrade.__tablename__} data...")
-        self._session.query(Upgrade).delete()
-        # add all upgrades to empty table
-        self._logger.debug(f"Adding {len(upgrades)} upgrades to database...")
-        self._session.add_all(upgrades)
+        # delete invalid upgrades first
+        deleted_count = 0
+        for upgrade in existing_upgrades:
+            if upgrade not in upgrades_set:
+                self._session.delete(upgrade)
+                deleted_count += 1
+        self._logger.info(f">>> Removing {deleted_count} invalid upgrades from database...")
 
-        for new_ship in self._session.new:
-            if isinstance(new_ship, Upgrade):
-                self._logger.info(f">>> New upgrade added: {new_ship}.")
+        # add new upgrades
+        new_count = 0
+        for upgrade in upgrades_set:
+            if upgrade not in existing_upgrades:
+                self._session.add(upgrade)
+                new_count += 1
+        self._logger.info(f">>> Adding {new_count} new upgrades to database...")
 
         self._session.commit()
         self._logger.info("########## DONE ###########")
