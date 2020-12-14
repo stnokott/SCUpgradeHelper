@@ -37,47 +37,38 @@ class EntityManager:
         Args:
             manufacturers: manufacturers to process
         """
-        self._logger.debug("### PROCESSING MANUFACTURERS ###")
-        self._logger.debug(">>> Removing duplicates...")
-        manufacturers = set(manufacturers)
+        existing_manufacturers = self.get_manufacturers()
+        manufacturers_set = set(manufacturers)
 
-        self._logger.debug(f"Dropping {Manufacturer.__tablename__} data...")
-        self._session.query(Manufacturer).delete()
-        # add all manufacturers to empty table
-        self._logger.debug(
-            f"Adding {len(manufacturers)} manufacturers to database..."
-        )
-        self._session.add_all(manufacturers)
+        # delete invalid manufacturers first
+        deleted_count = 0
+        for manufacturer in existing_manufacturers:
+            if manufacturer not in manufacturers_set:
+                self._session.delete(manufacturer)
+                self._logger.debug(f">>> Removing {manufacturer}.")
+                deleted_count += 1
+        if deleted_count > 0:
+            self._logger.info(f">>> Removed {deleted_count} invalid manufacturers from database.")
+        else:
+            self._logger.info(">>> No invalid manufacturers in database detected.")
+
+        # add new manufacturers
+        new_count = 0
+        for manufacturer in manufacturers_set:
+            if manufacturer not in existing_manufacturers:
+                self._session.add(manufacturer)
+                self._logger.debug(f">>> Adding {manufacturer}.")
+                new_count += 1
+        if new_count > 0:
+            self._logger.info(f">>> Added {new_count} new manufacturers to database.")
+        else:
+            self._logger.info(">>> No new manufacturers detected.")
 
         self._session.commit()
         self._logger.debug("############# DONE #############")
 
-    def update_manufacturer(self, manufacturer: Manufacturer, commit: bool = True):
-        # check if manufacturer already exists
-        queried_manufacturer = self.get_manufacturer_by_name(manufacturer.name)
-        if not queried_manufacturer:
-            # add if not existing in db
-            self._session.add(manufacturer)
-        elif queried_manufacturer != manufacturer:
-            # overwrite data if exists, but not equal
-            manufacturer.copy_attrs_to(queried_manufacturer)
-        if commit:
-            self._session.commit()
-
-    def get_manufacturer_by_name(self, manufacturer_name: str):
-        """
-        Get ship manufactuerer by name
-        Args:
-            manufacturer_name: manufacturer name
-
-        Returns:
-            Manufacturer instance if found, otherwise None
-        """
-        query = self._session.query(Manufacturer).filter(
-            Manufacturer.name == manufacturer_name
-        )
-        queried_manufacturer = query.first()
-        return queried_manufacturer
+    def get_manufacturers(self) -> List[Manufacturer]:
+        return self._session.query(Manufacturer).all()
 
     def update_ships(self, ships: List[Ship]) -> None:
         """
@@ -86,26 +77,35 @@ class EntityManager:
             ships: ships to process
         """
         self._logger.info("### PROCESSING SHIPS ###")
+        existing_ships = self.get_ships()
+        ships_set = set(ships)
 
         self._logger.debug(">>> Applying manufacturers from database...")
-        for ship in ships:
-            queried_manufacturer = self.get_manufacturer_by_name(ship.manufacturer.name)
-            if queried_manufacturer:
-                ship.manufacturer_id = queried_manufacturer.id
-                ship.manufacturer = queried_manufacturer
-            else:
-                self.update_manufacturer(queried_manufacturer, commit=False)
+        self.update_manufacturers([ship.manufacturer for ship in ships_set])
 
-        # drop existing data first
-        self._logger.debug(f"Dropping {Ship.__tablename__} data...")
-        self._session.query(Ship).delete()
-        # add all ships to empty table
-        self._logger.debug(f"Adding {len(ships)} ships to database...")
-        self._session.add_all(ships)
+        # delete invalid ships first
+        deleted_count = 0
+        for ship in existing_ships:
+            if ship not in ships_set:
+                self._session.delete(ship)
+                self._logger.debug(f">>> Removing {ship}.")
+                deleted_count += 1
+        if deleted_count > 0:
+            self._logger.info(f">>> Removed {deleted_count} invalid ships from database.")
+        else:
+            self._logger.info(">>> No invalid ships in database detected.")
 
-        for new_ship in self._session.new:
-            if isinstance(new_ship, Ship):
-                self._logger.info(f">>> New ship added: {new_ship}.")
+        # add new ships
+        new_count = 0
+        for ship in ships_set:
+            if ship not in existing_ships:
+                self._session.add(ship)
+                self._logger.debug(f">>> Adding {ship}.")
+                new_count += 1
+        if new_count > 0:
+            self._logger.info(f">>> Added {new_count} new ships to database.")
+        else:
+            self._logger.info(">>> No new ships detected.")
 
         self._session.commit()
         self._logger.info("######### DONE #########")
@@ -120,20 +120,6 @@ class EntityManager:
         if result is None:
             return None
         return result[0]
-
-    def get_ship_by_name(self, ship_name: str):
-        """
-        Returns ship by name if found else None
-        Args:
-            ship_name: ship name to filter by
-
-        Returns:
-            Ship instance if exists, else None
-        """
-        with self._session.no_autoflush:
-            query = self._session.query(Ship).filter(Ship.name == ship_name)
-            queried_ship = query.first()
-        return queried_ship
 
     def get_ships(self) -> List[Ship]:
         """
@@ -157,16 +143,18 @@ class EntityManager:
         for upgrade in existing_upgrades:
             if upgrade not in upgrades_set:
                 self._session.delete(upgrade)
+                self._logger.debug(f">>> Removing {upgrade}")
                 deleted_count += 1
-        self._logger.info(f">>> Removing {deleted_count} invalid upgrades from database...")
+        self._logger.info(f">>> Removed {deleted_count} invalid upgrades from database.")
 
         # add new upgrades
         new_count = 0
         for upgrade in upgrades_set:
             if upgrade not in existing_upgrades:
                 self._session.add(upgrade)
+                self._logger.debug(f">>> Adding {upgrade}")
                 new_count += 1
-        self._logger.info(f">>> Adding {new_count} new upgrades to database...")
+        self._logger.info(f">>> Added {new_count} new upgrades to database.")
 
         self._session.commit()
         self._logger.info("########## DONE ###########")
