@@ -1,14 +1,60 @@
 """Contains classes for scraping websites"""
 import json
 import logging
+import re
 from functools import reduce
 from typing import List, Dict
 
+import praw
 import requests
 from bs4 import BeautifulSoup
+from praw.models import Submission
 from requests import Session
 
 from db.entity import Ship, Manufacturer, Upgrade
+
+
+class RedditScraper:
+    """
+    Class to scrape data from /r/starcitizen_trades
+    """
+
+    __SUBREDDIT_NAME = "starcitizen_trades"
+    __SUBREDDIT_SELLING_FLAIR_NAME = "selling"
+    __REDDIT_USER_AGENT = "python:scupgradehelper:v0.0.1 (by u/hibanabanana)"
+    __USER_FLAIR_VALIDATOR = re.compile("^RSI \\S+, Trader, Trades: [1-9][0-9]*$")
+
+    def __init__(self, client_id: str, client_secret: str, logger: logging.Logger):
+        self._reddit = praw.Reddit(
+            client_id=client_id,
+            client_secret=client_secret,
+            user_agent=self.__REDDIT_USER_AGENT,
+        )
+        self._subreddit = self._reddit.subreddit(self.__SUBREDDIT_NAME)
+        self._logger = logger
+
+    def get_store_posts(self) -> List[Submission]:
+        """
+        Retrieve submissions in subreddit matching appropriate flair, upvote ratio and trader reputation
+        Returns:
+            list of submissions matching filters
+        """
+        submissions = self._subreddit.search(
+            f"flair:'{self.__SUBREDDIT_SELLING_FLAIR_NAME}'",
+            sort="new",
+            time_filter="month",
+            limit=1000,
+        )
+        return [
+            submission
+            for submission in submissions
+            if (submission.upvote_ratio is None or submission.upvote_ratio > 0.2)
+            and (
+                submission.author_flair_text is None
+                or self.__USER_FLAIR_VALIDATOR.match(submission.author_flair_text)
+            )
+            is not None
+        ]
 
 
 class RSIScraper:
@@ -50,7 +96,8 @@ class RSIScraper:
         else:
             try:
                 ships = [
-                    self.ship_from_json(ship_json) for ship_json in response.json()["data"]
+                    self.ship_from_json(ship_json)
+                    for ship_json in response.json()["data"]
                 ]
                 available_skus = self.get_skus()
                 ships = self.apply_skus_to_ships(ships, available_skus)
@@ -165,8 +212,10 @@ class RSIScraper:
         session = self.create_anon_authorized_session()
         upgrades = []
         for (i, ship) in enumerate(from_ships):
-            if (i+1) % 25 == 0:
-                self._logger.info(f">>> {round((i+1)/len(from_ships)*100, 2)}% processed.")
+            if (i + 1) % 25 == 0:
+                self._logger.info(
+                    f">>> {round((i+1)/len(from_ships)*100, 2)}% processed."
+                )
             upgrades += self.get_upgrades_by_ship_id(ship.id, session)
         self._logger.info(f">>> {len(upgrades)} upgrades found.")
         self._logger.info("############ DONE #########")
@@ -186,7 +235,11 @@ class RSIScraper:
             self.__UPGRADES_URL,
             json={
                 "operationName": "filterShips",
-                "variables": {"fromFilters": [], "fromId": int(ship_id), "toFilters": []},
+                "variables": {
+                    "fromFilters": [],
+                    "fromId": int(ship_id),
+                    "toFilters": [],
+                },
                 "query": QUERY_FILTER_SHIPS,
             },
         )
@@ -199,7 +252,10 @@ class RSIScraper:
             upgrades = response.json()["data"]["to"]
             if upgrades is None or "ships" not in upgrades:
                 return []
-            return [self.upgrade_from_json(upgrade_json, ship_id) for upgrade_json in upgrades["ships"]]
+            return [
+                self.upgrade_from_json(upgrade_json, ship_id)
+                for upgrade_json in upgrades["ships"]
+            ]
         except (KeyError, TypeError) as e:
             self._logger.warning(f"Error occured while parsing upgrades json: {e}")
             return []
@@ -268,8 +324,8 @@ class RSIScraper:
         return Upgrade(
             ship_from_id=int(from_id),
             ship_to_id=int(upgrade_json["id"]),
-            price_usd=float(int(cheapest_upgrade["upgradePrice"])/100),
-            seller=cls.__STORE_NAME
+            price_usd=float(int(cheapest_upgrade["upgradePrice"]) / 100),
+            seller=cls.__STORE_NAME,
         )
 
 
