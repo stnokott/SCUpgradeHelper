@@ -140,8 +140,8 @@ class Upgrade(Base):
         )
 
     def __repr__(self):
-        ship_from_name = self.ship_from.name if self.ship_from is not None else "?"
-        ship_to_name = self.ship_to.name if self.ship_to is not None else "?"
+        ship_from_name = self.ship_from.name if self.ship_from is not None else self.ship_from_id
+        ship_to_name = self.ship_to.name if self.ship_to is not None else self.ship_to_id
         return f"<{Upgrade.__name__}>(From [{ship_from_name}] to [{ship_to_name}]: " \
                f"${self.price_usd} @ {self.seller})"
 
