@@ -234,7 +234,7 @@ class RSIScraper:
         """
         manufacturer_json = ship_json["manufacturer"]
         manufacturer = Manufacturer(
-            id=manufacturer_json["id"],
+            id=int(manufacturer_json["id"]),
             name=manufacturer_json["name"],
             code=manufacturer_json["code"],
         )
