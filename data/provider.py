@@ -80,12 +80,12 @@ class DataProvider:
             self._refresh_data()
             refreshed = True
         elif force:
-            self._logger.info(f">>> Forcing {self.__class__.__name__} data update...")
+            self._logger.info(f"Forcing {self.__class__.__name__} data update...")
             self._refresh_data()
             refreshed = True
         elif echo:
             self._logger.info(
-                f">>> {self.__class__.__name__} data valid, expires in {self.data_expiry.expires_in()}"
+                f"{self.__class__.__name__} data valid, expires in {self.data_expiry.expires_in()}"
             )
         return self._data, refreshed
 
