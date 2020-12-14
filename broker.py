@@ -45,6 +45,14 @@ class SCDataBroker:
         self._update_ships(force_update, True)
         self._update_upgrades(force_update, True)
 
+    def force_complete_update(self) -> None:
+        """
+        Forces complete update of all underlying data.
+        Very expensive operation, use sparingly!
+        """
+        self._update_ships(force=True, echo=True)
+        self._update_upgrades(force=True, echo=True)
+
     def _update_ships(self, force: bool = False, echo: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(
             DataProviderType.SHIPS
