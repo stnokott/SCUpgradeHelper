@@ -73,19 +73,19 @@ class DataProvider:
             [0]: list of ORM entities
             [1]: True if provider's data got updated, otherwise False
         """
-        self._logger.debug(f"{self.__class__.__name__} data requested.")
+        self._logger.info(f"Checking {self.__class__.__name__} expiry...")
         refreshed = False
         if self.data_expiry.is_expired():
             self._logger.info(f">>> {self.__class__.__name__} data expired, updating...")
             self._refresh_data()
             refreshed = True
         elif force:
-            self._logger.info(f"Forcing {self.__class__.__name__} data update...")
+            self._logger.info(f">>> {self.__class__.__name__} data update forced...")
             self._refresh_data()
             refreshed = True
         elif echo:
             self._logger.info(
-                f"{self.__class__.__name__} data valid, expires in {self.data_expiry.expires_in()}"
+                f">>> {self.__class__.__name__} data valid, expires in {self.data_expiry.expires_in()}"
             )
         return self._data, refreshed
 

@@ -11,7 +11,7 @@ from data.provider import (
     UpgradeDataProvider,
 )
 from db.entity import Ship, Upgrade
-from db.util import EntityManager
+from db.manager import EntityManager
 
 
 class SCDataBroker:

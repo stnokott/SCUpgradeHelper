@@ -10,6 +10,7 @@ from sqlalchemy.sql.expression import func
 
 from const import DATABASE_FILEPATH
 from db.entity import Ship, Base, Manufacturer, Upgrade
+from util import StatusString
 
 
 class EntityManager:
@@ -35,8 +36,8 @@ class EntityManager:
             return
         entity_type = entities[0].__class__
         entity_type_name = entity_type.__name__
-        status_str = f"PROCESSING {entity_type_name}s"
-        self._logger.info(f"### {status_str} ###")
+        status = StatusString(entity_type_name)
+        self._logger.info(status.get_status_str())
         existing_entities = self._get_entities(entity_type)
         entities_set = set(entities)
 
@@ -71,15 +72,7 @@ class EntityManager:
             self._logger.info(f">>> No new {entity_type_name}(s) detected.")
 
         self._session.commit()
-        self._logger.info(self.__get_status_done_str(status_str))
-
-    @classmethod
-    def __get_status_done_str(cls, status: str):
-        __DONE_STR = "DONE"
-        if len(status) < 4:
-            return f"### {__DONE_STR} ###"
-        surrounding_hashs = round((len(status) - len(__DONE_STR)) / 2) * "#"
-        return f"###{surrounding_hashs} {__DONE_STR} {surrounding_hashs}###"
+        self._logger.info(status.get_status_done_str())
 
     def _get_entities(self, table_class: Type[Base]):
         return self._session.query(table_class).all()
