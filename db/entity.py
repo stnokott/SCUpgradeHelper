@@ -119,7 +119,8 @@ class Upgrade(Base):
 
     def __eq__(self, other):
         return (
-            self.ship_to_id == other.ship_to_id
+            self.ship_from_id == other.ship_from_id
+            and self.ship_to_id == other.ship_to_id
             and self.price_usd == other.price_usd
             and self.seller == other.seller
         )
