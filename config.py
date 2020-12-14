@@ -20,7 +20,9 @@ class ConfigProvider:
 
         # read AUTH section
         auth_section = self._get_section("AUTH")
-        self.sc_api_key = auth_section["SCApiKey"]
+        self.sc_api_key = auth_section["scapikey"]
+        self.reddit_client_id = auth_section["redditclientid"]
+        self.reddit_client_secret = auth_section["redditclientsecret"]
         logger.info("Configuration parsed.")
 
     def _get_section(self, section_name: str) -> configparser.SectionProxy:
