@@ -143,6 +143,7 @@ class EntityManager:
         Returns:
             datetime of smallest load date
         """
+        # TODO: use separate logging table since this method is not reliable
         result = self._session.query(func.min(Ship.loaddate)).first()
         if result is None:
             return None
