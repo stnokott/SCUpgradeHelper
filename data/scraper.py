@@ -46,7 +46,6 @@ class RedditScraper:
             limit=10,
         )
         filtered_submissions = self._filter_good_submissions(submissions)
-        filtered_submissions = self._filter_unique_submissions(filtered_submissions)
         return filtered_submissions
 
     def _filter_good_submissions(self, submissions: List[Submission]) -> List[Submission]:
@@ -60,28 +59,6 @@ class RedditScraper:
         return list(
             filter(lambda s: s.author_flair_text is not None and self.__USER_FLAIR_VALIDATOR.match(s.author_flair_text),
                    submissions))
-
-    @classmethod
-    def _filter_unique_submissions(cls, submissions: List[Submission]) -> List[Submission]:
-        """
-        Filter submissions to only contain unique stores.
-        Returns most recent store post if multiple from same author found.
-        Args:
-            submissions: list of submissions to filter
-        Returns:
-            Filtered list of submissions
-        """
-        filtered_submissions = {}  # dict with author names as keys and submissions as values
-        for submission in submissions:
-            author_name = submission.author.name
-            if author_name not in filtered_submissions:
-                filtered_submissions[author_name] = submission
-            else:
-                existing_submission = filtered_submissions[author_name]
-                if max(submission.created, (submission.edited or -1.0)) > max(existing_submission.created,
-                                                                            (existing_submission.edited or -1.0)):
-                    filtered_submissions[author_name] = submission
-        return list(filtered_submissions.values())
 
 
 class RSIScraper:
