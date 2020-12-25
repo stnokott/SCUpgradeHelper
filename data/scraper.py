@@ -20,7 +20,7 @@ class RedditScraper:
     """
 
     __SUBREDDIT_NAME = "starcitizen_trades"
-    __SUBREDDIT_SELLING_FLAIR_NAME = "selling"
+    __SUBREDDIT_STORE_FLAIR_NAME = "store"
     __REDDIT_USER_AGENT = "python:scupgradehelper:v0.0.1 (by u/hibanabanana)"
     __USER_FLAIR_VALIDATOR = re.compile("^RSI \\S+, Trader, Trades: [1-9][0-9]*$")
 
@@ -32,29 +32,56 @@ class RedditScraper:
         )
         self._subreddit = self._reddit.subreddit(self.__SUBREDDIT_NAME)
         self._logger = logger
+        self._get_latest_store_posts()
 
-    def get_store_posts(self) -> List[Submission]:
+    def _get_latest_store_posts(self) -> List[Submission]:
         """
         Retrieve submissions in subreddit matching appropriate flair, upvote ratio and trader reputation
         Returns:
             list of submissions matching filters
         """
         submissions = self._subreddit.search(
-            f"flair:'{self.__SUBREDDIT_SELLING_FLAIR_NAME}'",
+            f"flair:'{self.__SUBREDDIT_STORE_FLAIR_NAME}'",
             sort="new",
-            time_filter="month",
-            limit=1000,
+            limit=10,
         )
-        return [
-            submission
-            for submission in submissions
-            if (submission.upvote_ratio is None or submission.upvote_ratio > 0.2)
-            and (
-                submission.author_flair_text is None
-                or self.__USER_FLAIR_VALIDATOR.match(submission.author_flair_text)
-            )
-            is not None
-        ]
+        filtered_submissions = self._filter_good_submissions(submissions)
+        filtered_submissions = self._filter_unique_submissions(filtered_submissions)
+        return filtered_submissions
+
+    def _filter_good_submissions(self, submissions: List[Submission]) -> List[Submission]:
+        """
+        Filter submissions to follow certain guidelines such as a specific trader history
+        Args:
+            submissions: list of submissions to filter
+        Returns:
+            Filtered list of submissions
+        """
+        return list(
+            filter(lambda s: s.author_flair_text is not None and self.__USER_FLAIR_VALIDATOR.match(s.author_flair_text),
+                   submissions))
+
+    @classmethod
+    def _filter_unique_submissions(cls, submissions: List[Submission]) -> List[Submission]:
+        """
+        Filter submissions to only contain unique stores.
+        Returns most recent store post if multiple from same author found.
+        Args:
+            submissions: list of submissions to filter
+        Returns:
+            Filtered list of submissions
+        """
+        filtered_submissions = {}  # dict with author names as keys and submissions as values
+        for submission in submissions:
+            author_name = submission.author.name
+            if author_name not in filtered_submissions:
+                filtered_submissions[author_name] = submission
+            else:
+                existing_submission = filtered_submissions[author_name]
+                if max(submission.created, (submission.edited or -1.0)) > max(existing_submission.created,
+                                                                            (existing_submission.edited or -1.0)):
+                    filtered_submissions[author_name] = submission
+        return list(filtered_submissions.values())
 
 
 class RSIScraper:
@@ -119,7 +146,7 @@ class RSIScraper:
         return self.create_standalones(ships, self.get_skus())
 
     def create_standalones(
-        self, ships: List[Ship], skus: Dict[str, float]
+            self, ships: List[Ship], skus: Dict[str, float]
     ) -> List[Standalone]:
         """
         Overwrites ship prices with list of sku prices, if found in sku list
@@ -219,7 +246,7 @@ class RSIScraper:
         for (i, ship) in enumerate(from_ships):
             if (i + 1) % 25 == 0:
                 self._logger.info(
-                    f">>> {round((i+1)/len(from_ships)*100, 2)}% processed."
+                    f">>> {round((i + 1) / len(from_ships) * 100, 2)}% processed."
                 )
             upgrades += self.get_upgrades_by_ship_id(ship.id, session)
         self._logger.info(f">>> {len(upgrades)} upgrades found.")
@@ -324,7 +351,7 @@ class RSIScraper:
                 if upgr1["upgradePrice"] < upgr2["upgradePrice"]
                 else upgr2
             ),
-            available_upgrades,
+            list(filter(lambda u: u["upgradePrice"] is not None, available_upgrades))
         )
         return Upgrade(
             ship_from_id=int(from_id),
