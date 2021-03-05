@@ -11,3 +11,6 @@ if __name__ == "__main__":
 
     config = ConfigProvider(logger)
     broker = SCDataBroker(logger, config)
+    # broker.complete_update(echo=True)
+    print(broker.get_ships())
+    # reddit = RedditScraper(config.reddit_client_id, config.reddit_client_secret, logger)

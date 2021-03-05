@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import func
 
 from const import DATABASE_FILEPATH
-from db.entity import Ship, Base, Manufacturer, Upgrade, Standalone
+from data.provider import EntityType
+from db.entity import Ship, Base, Manufacturer, Upgrade, Standalone, UpdateLog
 from util import StatusString
 
 
@@ -109,6 +110,15 @@ class EntityManager:
         """
         self._update_entities(upgrades)
 
+    def log_update(self, data_type: EntityType) -> None:
+        """
+        Insert entry in log table
+        Args:
+            data_type: data provider type which got updated
+        """
+        self._session.add(UpdateLog(data_type=data_type, loaddate=datetime.now()))
+        self._session.commit()
+
     def get_manufacturers(self) -> List[Manufacturer]:
         """
         Returns:
@@ -137,36 +147,15 @@ class EntityManager:
         """
         return self._get_entities(Upgrade)
 
-    def get_ships_loaddate(self) -> Optional[datetime]:
+    def get_loaddate(self, data_type: EntityType) -> Optional[datetime]:
         """
-        Gets smallest load date from ship database
+        Get latest update date for specified data type
+        Args:
+            data_type: data type to query
         Returns:
-            datetime of smallest load date
+            smallest datetime or None if none found
         """
-        # TODO: use separate logging table since this method is not reliable
-        result = self._session.query(func.min(Ship.loaddate)).first()
-        if result is None:
-            return None
-        return result[0]
-
-    def get_standalones_loaddate(self) -> Optional[datetime]:
-        """
-        Gets smallest load date from standalones database
-        Returns:
-            datetime of smallest load date
-        """
-        result = self._session.query(func.min(Standalone.loaddate)).first()
-        if result is None:
-            return None
-        return result[0]
-
-    def get_upgrades_loaddate(self) -> Optional[datetime]:
-        """
-        Gets smallest load date from upgrades database
-        Returns:
-            datetime of smallest load date
-        """
-        result = self._session.query(func.min(Upgrade.loaddate)).first()
+        result = self._session.query(func.max(UpdateLog.loaddate)).filter_by(data_type=data_type).first()
         if result is None:
             return None
         return result[0]

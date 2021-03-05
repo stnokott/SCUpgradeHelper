@@ -6,7 +6,7 @@ from config import ConfigProvider
 from data.api import SCApi
 from data.provider import (
     DataProviderManager,
-    DataProviderType,
+    EntityType,
     ShipDataProvider,
     UpgradeDataProvider,
     StandaloneDataProvider,
@@ -28,27 +28,27 @@ class SCDataBroker:
         self._scapi = SCApi(config.sc_api_key, logger)
         self._data_provider_manager = DataProviderManager()
         ship_data_provider = ShipDataProvider(
-            self._em.get_ships(), self._em.get_ships_loaddate(), logger
+            self._em.get_ships(), self._em.get_loaddate(EntityType.SHIPS), logger
         )
         self._data_provider_manager.add_data_provider(
-            DataProviderType.SHIPS,
+            EntityType.SHIPS,
             ship_data_provider,
         )
         self._data_provider_manager.add_data_provider(
-            DataProviderType.STANDALONES,
+            EntityType.STANDALONES,
             StandaloneDataProvider(
                 self._em.get_standalones(),
                 ship_data_provider,
-                self._em.get_standalones_loaddate(),
+                self._em.get_loaddate(EntityType.STANDALONES),
                 logger,
             ),
         )
         self._data_provider_manager.add_data_provider(
-            DataProviderType.UPGRADES,
+            EntityType.UPGRADES,
             UpgradeDataProvider(
                 self._em.get_upgrades(),
                 ship_data_provider,
-                self._em.get_upgrades_loaddate(),
+                self._em.get_loaddate(EntityType.UPGRADES),
                 logger,
             ),
         )
@@ -69,28 +69,34 @@ class SCDataBroker:
 
     def _update_ships(self, force: bool = False, echo: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(
-            DataProviderType.SHIPS
+            EntityType.SHIPS
         )
         ships, updated = ship_data_provider.get_data(force, echo)
+        self._log_update(EntityType.SHIPS)
         if updated or force:
             self._em.update_manufacturers([ship.manufacturer for ship in ships])
             self._em.update_ships(ships)
 
     def _update_standalones(self, force: bool = False, echo: bool = False) -> None:
         standalone_data_provider = self._data_provider_manager.get_data_provider(
-            DataProviderType.STANDALONES
+            EntityType.STANDALONES
         )
         standalones, updated = standalone_data_provider.get_data(force, echo)
+        self._log_update(EntityType.STANDALONES)
         if updated or force:
             self._em.update_standalones(standalones)
 
     def _update_upgrades(self, force: bool = False, echo: bool = False) -> None:
         upgrade_data_provider = self._data_provider_manager.get_data_provider(
-            DataProviderType.UPGRADES
+            EntityType.UPGRADES
         )
         upgrades, updated = upgrade_data_provider.get_data(force, echo)
+        self._log_update(EntityType.UPGRADES)
         if updated or force:
             self._em.update_upgrades(upgrades)
+
+    def _log_update(self, data_type: EntityType) -> None:
+        self._em.log_update(data_type)
 
     def get_ships(self, force_update: bool = False) -> List[Ship]:
         """

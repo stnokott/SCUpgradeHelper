@@ -2,12 +2,11 @@
 import logging
 from abc import abstractmethod
 from datetime import timedelta, datetime
-from enum import Enum
 from typing import List, Tuple, Any
 
 from const import SHIP_DATA_EXPIRY, UPGRADE_DATA_EXPIRY
 from data.scraper import RSIScraper
-from db.entity import Ship, Upgrade, Standalone
+from db.entity import Ship, Upgrade, Standalone, EntityType
 from util import format_timedelta
 
 
@@ -91,16 +90,6 @@ class DataProvider:
         return self._data, refreshed
 
 
-class DataProviderType(Enum):
-    """
-    Enum for defining types of data providers
-    """
-
-    SHIPS = "Ships"
-    STANDALONES = "Standalones"
-    UPGRADES = "Upgrades"
-
-
 class DataProviderManager:
     """
     Class to manage data providers by their type
@@ -109,7 +98,7 @@ class DataProviderManager:
     def __init__(self):
         self._data_providers = {}
 
-    def get_data_provider(self, data_type: DataProviderType) -> DataProvider:
+    def get_data_provider(self, data_type: EntityType) -> DataProvider:
         """
         Return DataProvider instance by data_type
         Args:
@@ -123,7 +112,7 @@ class DataProviderManager:
         return self._data_providers[data_type]
 
     def add_data_provider(
-        self, data_type: DataProviderType, data_provider: DataProvider
+        self, data_type: EntityType, data_provider: DataProvider
     ) -> None:
         """
         Add data provider to manager if possible. Throws ValueError if already exists.

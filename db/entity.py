@@ -1,11 +1,22 @@
 """Contains entity classes for ORM"""
+import enum
 from datetime import datetime
 
-from sqlalchemy import event, Column, ForeignKey, Integer, Float, String, DateTime
+from sqlalchemy import event, Column, ForeignKey, Integer, Float, String, DateTime, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
+
+
+class EntityType(enum.Enum):
+    """
+    Enum for defining types of entities
+    """
+
+    SHIPS = "Ships"
+    STANDALONES = "Standalones"
+    UPGRADES = "Upgrades"
 
 
 class Manufacturer(Base):
@@ -70,23 +81,25 @@ class Ship(Base):
             target.manufacturer = self.manufacturer
 
     def __eq__(self, other):
-        return (
-            self.name == other.name
-            and self.manufacturer_id == other.manufacturer_id
-        )
+        return self.name == other.name and self.manufacturer_id == other.manufacturer_id
 
     def __hash__(self):
         return hash(("name", self.name))
 
     def __repr__(self):
-        return (
-            f"<{Ship.__name__}>({self.manufacturer.code} {self.name}"
-        )
+        return f"<{Ship.__name__}>({self.manufacturer.code} {self.name}"
 
 
 @event.listens_for(Ship, "before_insert")
 @event.listens_for(Ship, "before_update")
 def update_ship_loaddate(mapper, connection, target: Ship):
+    """
+    Update ship loaddate when persisting to DB
+    Args:
+        mapper: n/a
+        connection: n/a
+        target: ship entity to persist
+    """
     target.loaddate = datetime.now()
 
 
@@ -112,9 +125,9 @@ class Standalone(Base):
 
     def __eq__(self, other):
         return (
-                self.ship_id == other.ship_id
-                and self.price_usd == other.price_usd
-                and self.store_name == other.store_name
+            self.ship_id == other.ship_id
+            and self.price_usd == other.price_usd
+            and self.store_name == other.store_name
         )
 
     def __hash__(self):
@@ -137,6 +150,13 @@ class Standalone(Base):
 @event.listens_for(Standalone, "before_insert")
 @event.listens_for(Standalone, "before_update")
 def update_standalone_loaddate(mapper, connection, target: Standalone):
+    """
+    Update standalone loaddate when persisting to DB
+    Args:
+        mapper: n/a
+        connection: n/a
+        target: standalone entity to persist
+    """
     target.loaddate = datetime.now()
 
 
@@ -159,10 +179,10 @@ class Upgrade(Base):
 
     def __eq__(self, other):
         return (
-                self.ship_from_id == other.ship_from_id
-                and self.ship_to_id == other.ship_to_id
-                and self.price_usd == other.price_usd
-                and self.store_name == other.store_name
+            self.ship_from_id == other.ship_from_id
+            and self.ship_to_id == other.ship_to_id
+            and self.price_usd == other.price_usd
+            and self.store_name == other.store_name
         )
 
     def __hash__(self):
@@ -180,13 +200,59 @@ class Upgrade(Base):
         )
 
     def __repr__(self):
-        ship_from_name = self.ship_from.name if self.ship_from is not None else self.ship_from_id
-        ship_to_name = self.ship_to.name if self.ship_to is not None else self.ship_to_id
-        return f"<{Upgrade.__name__}>(From [{ship_from_name}] to [{ship_to_name}]: " \
-               f"${self.price_usd} @ {self.store_name})"
+        ship_from_name = (
+            self.ship_from.name if self.ship_from is not None else self.ship_from_id
+        )
+        ship_to_name = (
+            self.ship_to.name if self.ship_to is not None else self.ship_to_id
+        )
+        return (
+            f"<{Upgrade.__name__}>(From [{ship_from_name}] to [{ship_to_name}]: "
+            f"${self.price_usd} @ {self.store_name})"
+        )
 
 
 @event.listens_for(Upgrade, "before_insert")
 @event.listens_for(Upgrade, "before_update")
 def update_upgrade_loaddate(mapper, connection, target: Upgrade):
+    """
+    Update upgrade loaddate when persisting to DB
+    Args:
+        mapper: n/a
+        connection: n/a
+        target: upgrade entity to persist
+    """
     target.loaddate = datetime.now()
+
+
+class UpdateLog(Base):
+    """
+    Entity representing an entry in the log table
+    """
+
+    __tablename__ = "UPDATE_LOGS"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    data_type = Column(Enum(EntityType))
+    loaddate = Column(DateTime)
+
+    def __eq__(self, other):
+        return (
+            self.data_type == other.data_type
+            and self.loaddate == other.loaddate
+        )
+
+    def __hash__(self):
+        return hash(
+            (
+                "data_type",
+                self.data_type,
+                "loaddate",
+                self.loaddate
+            )
+        )
+
+    def __repr__(self):
+        return (
+            f"<{UpdateLog.__name__}>({self.data_type} updated at {self.loaddate})"
+        )
