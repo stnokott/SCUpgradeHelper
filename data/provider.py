@@ -4,7 +4,7 @@ from abc import abstractmethod
 from datetime import timedelta, datetime
 from typing import List, Tuple, Any
 
-from const import SHIP_DATA_EXPIRY, UPGRADE_DATA_EXPIRY
+from const import SHIP_DATA_EXPIRY, UPGRADE_DATA_EXPIRY, STANDALONE_DATE_EXPIRY
 from data.scraper import RSIScraper
 from db.entity import Ship, Upgrade, Standalone, EntityType
 from util import format_timedelta
@@ -154,7 +154,7 @@ class StandaloneDataProvider(DataProvider):
         last_loaded: datetime,
         logger: logging.Logger,
     ):
-        super().__init__(initial_data, last_loaded, UPGRADE_DATA_EXPIRY, logger)
+        super().__init__(initial_data, last_loaded, STANDALONE_DATE_EXPIRY, logger)
         self.__ship_data_provider = ship_data_provider
         self._scraper = RSIScraper(self._logger)
 
