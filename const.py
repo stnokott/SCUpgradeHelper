@@ -7,3 +7,5 @@ CONFIG_FILEPATH = "config.ini"
 SHIP_DATA_EXPIRY = timedelta(days=7)
 STANDALONE_DATE_EXPIRY = timedelta(days=1)
 UPGRADE_DATA_EXPIRY = timedelta(days=1)
+
+UPDATE_LOGS_ENTRY_LIMIT = 100

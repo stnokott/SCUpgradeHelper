@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import func
 
-from const import DATABASE_FILEPATH
+from const import DATABASE_FILEPATH, UPDATE_LOGS_ENTRY_LIMIT
 from data.provider import EntityType
 from db.entity import Ship, Base, Manufacturer, Upgrade, Standalone, UpdateLog
 from util import StatusString
@@ -24,10 +24,30 @@ class EntityManager:
         self._session = Session(bind=self._engine, expire_on_commit=False)
         self._logger = logger
         self._create_schema()
+        self._clean_update_logs()
 
     def _create_schema(self):
         self._logger.debug("Applying database schemata...")
         Base.metadata.create_all(self._engine)
+
+    def _clean_update_logs(self):
+        """
+        Cleans all entries in update log table except for newest to save space
+        """
+        self._logger.debug(f"Checking {UpdateLog.__name__} entry count...")
+        log_count = self._session.query(UpdateLog).count()
+        if not log_count > UPDATE_LOGS_ENTRY_LIMIT:
+            self._logger.debug("Limit not exceeded, no cleanup necessary.")
+            return
+
+        self._logger.debug(">>> Limit exceeded, cleaning entries...")
+        for data_type in EntityType:
+            max_loaddate_query = self._session.query(func.max(UpdateLog.loaddate)).filter_by(data_type=data_type)
+            self._session.query(UpdateLog).filter(
+                UpdateLog.data_type == data_type,
+                UpdateLog.loaddate.notin_(max_loaddate_query)
+            ).delete()
+        self._session.commit()
 
     def _update_entities(self, entities: List[Type[Base]]) -> None:
         if len(entities) == 0:
