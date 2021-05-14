@@ -108,19 +108,23 @@ Manufacturer.ships = relationship(
 )
 
 
-class Standalone(Base):
+class Purchasable(Base):
+    __abstract__ = True
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    loaddate = Column(DateTime)
+    price_usd = Column(Float, nullable=False)
+    store_name = Column(String, nullable=False)
+
+
+class Standalone(Purchasable):
     """
     Entity representing a purchase that gives you a ship directly
     """
 
     __tablename__ = "STANDALONE"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    loaddate = Column(DateTime)
     ship_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
-    price_usd = Column(Float, nullable=False)
-    store_name = Column(String, nullable=False)
-
     ship = relationship("Ship")
 
     def __eq__(self, other):
@@ -160,19 +164,15 @@ def update_standalone_loaddate(mapper, connection, target: Standalone):
     target.loaddate = datetime.now()
 
 
-class Upgrade(Base):
+class Upgrade(Purchasable):
     """
     Entity representing a ship upgrade
     """
 
     __tablename__ = "UPGRADES"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    loaddate = Column(DateTime)
     ship_from_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
     ship_to_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
-    price_usd = Column(Float, nullable=False)
-    store_name = Column(String, nullable=False)
 
     ship_from = relationship("Ship", foreign_keys=[ship_from_id])
     ship_to = relationship("Ship", foreign_keys=[ship_to_id])
