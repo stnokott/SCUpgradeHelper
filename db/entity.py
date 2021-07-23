@@ -87,7 +87,7 @@ class Ship(Base):
         return hash(("name", self.name))
 
     def __repr__(self):
-        return f"<{Ship.__name__}>({self.manufacturer.code} {self.name}"
+        return f"<{Ship.__name__}>({self.manufacturer.code} {self.name})"
 
 
 @event.listens_for(Ship, "before_insert")
