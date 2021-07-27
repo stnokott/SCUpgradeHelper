@@ -70,6 +70,7 @@ class EntityManager:
     def _remove_stale_entities(
         self, entity_type: Union[Ship, Standalone, Upgrade]
     ) -> None:
+        # TODO: find solution to differentiate between official and Reddit entries
         return
         now = datetime.now()
         if entity_type == Ship:
