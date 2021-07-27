@@ -7,7 +7,7 @@ from typing import Optional, List
 
 from praw.reddit import Submission
 
-from const import MAX_SHIP_NAME_LENGTH
+from const import REDDIT_PARSE_EXCLUDE_KEYWORDS
 from db.entity import EntityType
 
 
@@ -34,12 +34,12 @@ class ParsedRedditSubmissionEntry:
         self.price_usd: float = float(fixed_price_string)
         self.store_name: str = args[2]
         self.ship_name: Optional[str] = kwargs.get("ship_name") or None
-        if self.ship_name is not None and len(self.ship_name) > MAX_SHIP_NAME_LENGTH:
-            raise NotParsableException(
-                f"Name {self.ship_name} too long, unlikely to be ship"
-            )
         self.ship_name_from: Optional[str] = kwargs.get("ship_name_from") or None
         self.ship_name_to: Optional[str] = kwargs.get("ship_name_to") or None
+        for name in [self.ship_name, self.ship_name_from, self.ship_name_to]:
+            if name is not None and any(
+                    key.lower() in name.lower() for key in REDDIT_PARSE_EXCLUDE_KEYWORDS):
+                raise NotParsableException(f"Ship name {name} contains exclude keyword, ignoring.")
         if self.entity_type == EntityType.UPGRADES and (
             self.ship_name_from is None or self.ship_name_to is None
         ):

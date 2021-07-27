@@ -3,9 +3,9 @@ import logging
 from datetime import datetime
 from typing import List, Optional, Type, Union
 
-import Levenshtein
+from fuzzywuzzy import process, fuzz
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, configure_mappers
+from sqlalchemy.orm import Session, configure_mappers, aliased
 from sqlalchemy.sql.expression import func
 
 from const import (
@@ -15,9 +15,7 @@ from const import (
     SHIP_DATA_EXPIRY,
     STANDALONE_DATA_EXPIRY,
     UPGRADE_DATA_EXPIRY,
-    FUZZY_SEARCH_MAX_LEVENSHTEIN,
-    MAX_SHIP_NAME_LENGTH,
-    update_max_ship_name_length, MIN_LENGTH_EXCLUDES,
+    FUZZY_SEARCH_MIN_SCORE, FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE,
 )
 from db.entity import (
     UpdateType,
@@ -191,21 +189,6 @@ class EntityManager:
             ships: list of ships to process
         """
         self._update_entities(ships)
-        ship_longest_name = (
-            self._session.query(Ship)
-            .order_by(func.char_length(Ship.name).desc())
-            .first()
-        )
-        max_ship_name_length = len(ship_longest_name.name)
-        manufacturer_longest_name = (
-            self._session.query(Manufacturer)
-            .order_by(func.char_length(Manufacturer.code).desc())
-            .first()
-        )
-        max_manufacturer_name_length = len(manufacturer_longest_name.name)
-        update_max_ship_name_length(
-            max_manufacturer_name_length + max_ship_name_length + 5
-        )
 
     def update_standalones(self, standalones: List[Standalone]):
         """
@@ -246,54 +229,35 @@ class EntityManager:
         """
         return self._get_entities(UpdateType.SHIPS)
 
-    def get_ship_id_by_name(self, name: str) -> Optional[int]:
+    def find_ship_id_by_name(self, name: str) -> Optional[int]:
         ships: List[Ship] = self._session.query(Ship).all()
         if ships is None or len(ships) == 0:
             return None
-        # TODO: first check if any words in name contained in any *single* ship
-        # TODO: if multiple results, execute levenshtein on those
-        # TODO: if no results, go current method
-        name_no_manufacturer = name[
-            name.find(" ") + 1:
-        ]  # cut before first space (removes the manufacturer in some cases)
-        n1_permutations = [
-            perm
-            for perm in [
-                name.lower(),
-                name_no_manufacturer.lower(),
-                name[
-                    : name.find("-") - 1  # cut before minus "-" (removes additions such as special editions)
-                ].lower(),
-                name[
-                    : name.replace(" ", "", 1).find(" ") + 1  # cut before second space (removes additions as paints)
-                ].lower(),
-                name_no_manufacturer[
-                    : name_no_manufacturer.find("-") - 1  # same without manufacturer
-                ].lower(),
-                name_no_manufacturer[
-                    : name_no_manufacturer.find(" ") + 1  # same without manufacturer
-                ].lower(),
-            ] if len(perm) >= 5 or any(exclude.lower() in perm for exclude in MIN_LENGTH_EXCLUDES)
-        ]
 
-        for n1_permutation in set(n1_permutations):
-            ships.sort(
-                key=lambda ship: min(
-                    Levenshtein.distance(n1_permutation, ship.name.lower()),
-                    Levenshtein.distance(n1_permutation, f"{ship.manufacturer.name.lower()} {ship.name.lower()}")
-                )
+        result = process.extractOne(
+            name,
+            [f"{ship.manufacturer.code} {ship.name}" for ship in ships],
+            scorer=fuzz.WRatio
+        )
+
+        if result is not None and result[1] >= FUZZY_SEARCH_MIN_SCORE:
+            if result[1] < FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE:
+                self._logger.warning(f"Match [{result[0]}] <-> [{name}] needs to be reviewed.")
+            return self._get_ship_id_by_manu_name(result[0])
+        else:
+            self._logger.debug(
+                f"Ship name [{name}] could not be resolved to entry in database!"
             )
-            distance = min(
-                Levenshtein.distance(n1_permutation, ships[0].name.lower()),
-                Levenshtein.distance(n1_permutation, f"{ships[0].manufacturer.name.lower()} {ships[0].name.lower()}")
-            )
-            if distance <= FUZZY_SEARCH_MAX_LEVENSHTEIN:
-                if distance > FUZZY_SEARCH_MAX_LEVENSHTEIN / 2:
-                    self._logger.warning(
-                        f"Ship [{name}] mapped to [{ships[0]}], might be incorrect."
-                    )
-                return ships[0].id
-        return None
+            return None
+
+    def _get_ship_id_by_manu_name(self, s: str):
+        m = aliased(Manufacturer)
+
+        result = self._session.query(Ship).join(m, Ship.manufacturer).filter((m.code + ' ' + Ship.name) == s).first()
+        if result is not None:
+            return result.id
+        else:
+            return None
 
     def get_rsi_standalones(self) -> List[Standalone]:
         """

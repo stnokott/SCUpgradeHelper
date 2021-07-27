@@ -6,13 +6,16 @@ import os
 
 from const import CONFIG_FILEPATH
 
-DEFAULT_VALUES = {"AUTH": {"redditclientid": "", "redditclientsecret": ""}}
+DEFAULT_VALUES = {
+    "AUTH": {"scapikey": "", "redditclientid": "", "redditclientsecret": ""}
+}
 
 
 class ConfigProvider:
     """
     Provides configuration data from config file
     """
+
     def __init__(self, logger: logging.Logger):
         self._ensure_file_exists()
         self._config = configparser.ConfigParser()
@@ -20,6 +23,7 @@ class ConfigProvider:
 
         # read AUTH section
         auth_section = self._get_section("AUTH")
+        self.sc_api_key = auth_section["scapikey"]
         self.reddit_client_id = auth_section["redditclientid"]
         self.reddit_client_secret = auth_section["redditclientsecret"]
         logger.info("Configuration parsed.")

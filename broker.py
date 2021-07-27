@@ -120,7 +120,7 @@ class SCDataBroker:
             upgrades = []
             for entry in entries:
                 if entry.entity_type == EntityType.STANDALONES:
-                    ship_id = self._em.get_ship_id_by_name(entry.ship_name)
+                    ship_id = self._em.find_ship_id_by_name(entry.ship_name)
                     if ship_id is not None:
                         standalones.append(
                             Standalone(
@@ -129,13 +129,9 @@ class SCDataBroker:
                                 ship_id=ship_id,
                             )
                         )
-                    else:
-                        self._logger.debug(
-                            f"Ship name [{entry.ship_name}] could not be resolved!"
-                        )
                 elif entry.entity_type == EntityType.UPGRADES:
-                    ship_id_from = self._em.get_ship_id_by_name(entry.ship_name_from)
-                    ship_id_to = self._em.get_ship_id_by_name(entry.ship_name_to)
+                    ship_id_from = self._em.find_ship_id_by_name(entry.ship_name_from)
+                    ship_id_to = self._em.find_ship_id_by_name(entry.ship_name_to)
                     if ship_id_from is not None and ship_id_to is not None:
                         upgrades.append(
                             Upgrade(
