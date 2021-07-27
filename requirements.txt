@@ -1,3 +1,4 @@
+wheel~=0.36.2
 requests~=2.26.0
 SQLAlchemy~=1.4.22
 praw~=7.3.0
