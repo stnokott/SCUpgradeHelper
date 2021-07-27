@@ -1,5 +1,4 @@
 """Contains broker classes for communicating data between APIs and the database"""
-from logging import Logger
 from typing import List
 
 from config import ConfigProvider
@@ -15,6 +14,7 @@ from data.provider import (
 from data.scraper.submissionparser import ParsedRedditSubmissionEntry
 from db.entity import Ship, Upgrade, UpdateType, EntityType, Standalone
 from db.manager import EntityManager
+from util import CustomLogger
 
 
 class SCDataBroker:
@@ -23,7 +23,7 @@ class SCDataBroker:
     """
 
     def __init__(
-        self, logger: Logger, config: ConfigProvider, force_update: bool = False
+        self, logger: CustomLogger, config: ConfigProvider, force_update: bool = False
     ):
         self._logger = logger
         self._em = EntityManager(logger)
@@ -147,8 +147,9 @@ class SCDataBroker:
                             unresolved_ship_names.append(entry.ship_name_from)
                         if ship_id_to is None:
                             unresolved_ship_names.append(entry.ship_name_to)
-                        self._logger.debug(
-                            f"Ignored Reddit upgrade because ship name(s) [{', '.join(unresolved_ship_names)}] could not be resolved!"
+                        self._logger.failure(
+                            f"Ignored Reddit upgrade because ship name(s) [{', '.join(unresolved_ship_names)}] could not be resolved!",
+                            CustomLogger.LEVEL_DEBUG
                         )
             self._em.update_standalones(standalones)
             self._em.update_upgrades(upgrades)

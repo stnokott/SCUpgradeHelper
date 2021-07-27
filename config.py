@@ -1,10 +1,10 @@
 """contains config classes"""
 
 import configparser
-import logging
 import os
 
 from const import CONFIG_FILEPATH
+from util import CustomLogger
 
 DEFAULT_VALUES = {
     "AUTH": {"scapikey": "", "redditclientid": "", "redditclientsecret": ""}
@@ -16,7 +16,7 @@ class ConfigProvider:
     Provides configuration data from config file
     """
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: CustomLogger):
         self._ensure_file_exists()
         self._config = configparser.ConfigParser()
         self._config.read(CONFIG_FILEPATH)
@@ -26,7 +26,7 @@ class ConfigProvider:
         self.sc_api_key = auth_section["scapikey"]
         self.reddit_client_id = auth_section["redditclientid"]
         self.reddit_client_secret = auth_section["redditclientsecret"]
-        logger.info("Configuration parsed.")
+        logger.success("Configuration parsed.", CustomLogger.LEVEL_INFO)
 
     def _get_section(self, section_name: str) -> configparser.SectionProxy:
         # check if section exists

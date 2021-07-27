@@ -1,6 +1,5 @@
 """Contains utility classes for providing data"""
 import enum
-import logging
 from abc import abstractmethod
 from datetime import timedelta, datetime
 from typing import List, Tuple, Any, Type
@@ -13,7 +12,7 @@ from const import (
 )
 from data.scraper.scraper import RSIScraper, RedditScraper
 from db.entity import Ship, Upgrade, Standalone, Base
-from util import format_timedelta
+from util import format_timedelta, CustomLogger
 
 
 class Expiry:
@@ -56,7 +55,7 @@ class DataProvider:
         initial_data: List[Any],
         last_loaded: datetime,
         data_lifetime: timedelta,
-        logger: logging.Logger,
+        logger: CustomLogger,
     ):
         self._data = initial_data
         self.data_expiry = Expiry(last_loaded, data_lifetime)
@@ -152,7 +151,7 @@ class ShipDataProvider(DataProvider):
     """
 
     def __init__(
-        self, initial_data: List[Ship], last_loaded: datetime, logger: logging.Logger
+        self, initial_data: List[Ship], last_loaded: datetime, logger: CustomLogger
     ):
         super().__init__(initial_data, last_loaded, SHIP_DATA_EXPIRY, logger)
         self.__scraper = RSIScraper(self._logger)
@@ -175,7 +174,7 @@ class OfficialStandaloneDataProvider(DataProvider):
         initial_data: List[Standalone],
         ship_data_provider: ShipDataProvider,
         last_loaded: datetime,
-        logger: logging.Logger,
+        logger: CustomLogger,
     ):
         super().__init__(initial_data, last_loaded, STANDALONE_DATA_EXPIRY, logger)
         self.__ship_data_provider = ship_data_provider
@@ -201,7 +200,7 @@ class OfficialUpgradeDataProvider(DataProvider):
         initial_data: List[Upgrade],
         ship_data_provider: ShipDataProvider,
         last_loaded: datetime,
-        logger: logging.Logger,
+        logger: CustomLogger,
     ):
         super().__init__(initial_data, last_loaded, UPGRADE_DATA_EXPIRY, logger)
         self.__ship_data_provider = ship_data_provider
@@ -226,7 +225,7 @@ class RedditDataProvider(DataProvider):
         client_secret: str,
         initial_data: List[Type[Base]],
         last_loaded: datetime,
-        logger: logging.Logger,
+        logger: CustomLogger,
     ):
         super().__init__(initial_data, last_loaded, REDDIT_DATA_EXPIRY, logger)
         self._scraper = RedditScraper(client_id, client_secret, self._logger)

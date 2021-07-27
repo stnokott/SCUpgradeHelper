@@ -1,11 +1,11 @@
 """contains API classes"""
 import json
-import logging
 from typing import List
 
 import requests
 
 from db.entity import Ship, Manufacturer
+from util import CustomLogger
 
 
 class SCApi:
@@ -15,7 +15,7 @@ class SCApi:
 
     __BASE_URL = "http://api.starcitizen-api.com"
 
-    def __init__(self, api_key: str, logger: logging.Logger):
+    def __init__(self, api_key: str, logger: CustomLogger):
         self._api_key = api_key
         self._logger = logger
 
@@ -25,15 +25,15 @@ class SCApi:
         Returns:
             list of ship entities
         """
-        self._logger.info("### RETRIEVING SHIP DATA ###")
+        self._logger.header("### RETRIEVING SHIP DATA ###")
         self._logger.info("(this may take a while)")
         try:
             response = self._get("/ships")
-            self._logger.info("########### DONE ###########")
+            self._logger.header("########### DONE ###########")
             return self._ships_from_json(response)
         except RequestUnsuccessfulException as e:
             self._logger.warning(f"Unsuccessful request to ships endpoint: {e}")
-            self._logger.info("########### ERROR ##########")
+            self._logger.header("########### ERROR ##########")
             return []
 
     @classmethod

@@ -1,6 +1,5 @@
 """Contains classes for scraping websites"""
 import json
-import logging
 import re
 from functools import reduce
 from typing import List, Dict
@@ -17,6 +16,7 @@ from data.scraper.submissionparser import (
     ParsedRedditSubmissionEntry,
 )
 from db.entity import Ship, Manufacturer, Upgrade, Standalone
+from util import CustomLogger
 
 
 class RedditScraper:
@@ -29,7 +29,7 @@ class RedditScraper:
     __REDDIT_USER_AGENT = "python:scupgradehelper:v0.0.1 (by u/hibanabanana)"
     __USER_FLAIR_VALIDATOR = re.compile("^RSI \\S+, Trader, Trades: [1-9][0-9]*$")
 
-    def __init__(self, client_id: str, client_secret: str, logger: logging.Logger):
+    def __init__(self, client_id: str, client_secret: str, logger: CustomLogger):
         self._reddit = praw.Reddit(
             client_id=client_id,
             client_secret=client_secret,
@@ -96,7 +96,7 @@ class RSIScraper:
         "https://robertsspaceindustries.com/api/ship-upgrades/setContextToken"
     )
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: CustomLogger):
         self._logger = logger
         self._ships = None
 
@@ -106,13 +106,14 @@ class RSIScraper:
         Returns:
             list of ships generated from json
         """
-        self._logger.info("### REQUESTING OFFICIAL SHIPS ###")
+        self._logger.header("### REQUESTING OFFICIAL SHIPS ###", CustomLogger.LEVEL_INFO)
         ships = []
         response = requests.get(self.__SHIP_LIST_URL)
         # TODO: replace duplicate code
         if response.status_code != 200:
-            self._logger.warning(
-                f">>> Request to ship list endpoint {response.url} unsuccessful: {response.content}"
+            self._logger.failure(
+                f">>> Request to ship list endpoint {response.url} unsuccessful: {response.content}",
+                CustomLogger.LEVEL_WARN
             )
         else:
             try:
@@ -121,11 +122,12 @@ class RSIScraper:
                     for ship_json in response.json()["data"]
                 ]
             except KeyError as e:
-                self._logger.warning(f">> Error occured while parsing ships json: {e}")
-        self._logger.info(
-            f">>> {len(ships)} ships retrieved from {RSI_SCRAPER_STORE_NAME}."
+                self._logger.failure(f">> Error occured while parsing ships json: {e}", CustomLogger.LEVEL_WARN)
+        self._logger.success(
+            f">>> {len(ships)} ships retrieved from {RSI_SCRAPER_STORE_NAME}.",
+            CustomLogger.LEVEL_WARN
         )
-        self._logger.info("############## DONE #############")
+        self._logger.header("############## DONE #############", CustomLogger.LEVEL_INFO)
         self._ships = ships
         return ships
 
@@ -206,8 +208,9 @@ class RSIScraper:
                 },
             )
             if response.status_code != 200:
-                self._logger.warning(
-                    f"Request to SKU endpoint {response.url} unsuccessful: {response.content}"
+                self._logger.failure(
+                    f"Request to SKU endpoint {response.url} unsuccessful: {response.content}",
+                    CustomLogger.LEVEL_WARN
                 )
                 return skus
             try:
@@ -228,7 +231,7 @@ class RSIScraper:
                 rows_fetched += sku_json["rowcount"]
                 current_page += 1
             except KeyError as e:
-                self._logger.warning(f"Error occured while parsing sku json: {e}")
+                self._logger.failure(f"Error occured while parsing sku json: {e}", CustomLogger.LEVEL_WARN)
                 return skus
         return skus
 
@@ -241,7 +244,7 @@ class RSIScraper:
         Returns:
             list of upgrades for all ships provided
         """
-        self._logger.info("### REQUESTING OFFICIAL UPGRADES ###")
+        self._logger.header("### REQUESTING OFFICIAL UPGRADES ###", CustomLogger.LEVEL_INFO)
         self._logger.info(f">>> Base of {len(from_ships)} ships will be used.")
         session = self.create_anon_authorized_session()
         upgrades = []
@@ -251,8 +254,8 @@ class RSIScraper:
                     f">>> {round((i + 1) / len(from_ships) * 100, 2)}% processed."
                 )
             upgrades += self.get_upgrades_by_ship_id(ship.id, session)
-        self._logger.info(f">>> {len(upgrades)} upgrades found.")
-        self._logger.info("################ DONE ##############")
+        self._logger.success(f">>> {len(upgrades)} upgrades found.", CustomLogger.LEVEL_INFO)
+        self._logger.header("################ DONE ##############", CustomLogger.LEVEL_INFO)
         return upgrades
 
     def get_upgrades_by_ship_id(self, ship_id: int, session: Session) -> List[Upgrade]:
@@ -278,15 +281,17 @@ class RSIScraper:
             },
         )
         if response.status_code != 200:
-            self._logger.warning(
-                f"Request to upgrades endpoint {response.url} unsuccessful: {response.content}"
+            self._logger.failure(
+                f"Request to upgrades endpoint {response.url} unsuccessful: {response.content}",
+                CustomLogger.LEVEL_WARN
             )
             return []
         try:
             upgrades = response.json()["data"]["to"]
             if upgrades is None or "ships" not in upgrades:
-                self._logger.warning(
-                    f"Invalid response for upgrades for upgrades from ship_id={ship_id}, ignoring."
+                self._logger.failure(
+                    f"Invalid response for upgrades for upgrades from ship_id={ship_id}, ignoring.",
+                    CustomLogger.LEVEL_WARN
                 )
                 return []
             return [
@@ -294,7 +299,7 @@ class RSIScraper:
                 for upgrade_json in upgrades["ships"]
             ]
         except (KeyError, TypeError) as e:
-            self._logger.warning(f"Error occured while parsing upgrades json: {e}")
+            self._logger.failure(f"Error occured while parsing upgrades json: {e}", CustomLogger.LEVEL_DEBUG)
             return []
 
     def set_currency_usd(self):

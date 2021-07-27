@@ -3,11 +3,10 @@ import logging
 
 from broker import SCDataBroker
 from config import ConfigProvider
+from util import CustomLogger
 
 if __name__ == "__main__":
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler())
+    logger = CustomLogger(__name__, logging.DEBUG)
 
     config = ConfigProvider(logger)
     broker = SCDataBroker(logger, config)

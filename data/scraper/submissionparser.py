@@ -1,5 +1,4 @@
 """Contains classes for parsing Reddit submissions"""
-import logging
 from abc import ABC, abstractmethod
 
 from bs4 import BeautifulSoup
@@ -9,6 +8,7 @@ from praw.reddit import Submission
 
 from const import REDDIT_PARSE_EXCLUDE_KEYWORDS
 from db.entity import EntityType
+from util import CustomLogger
 
 
 class NotParsableException(Exception):
@@ -53,7 +53,7 @@ class ParsedRedditSubmissionEntry:
 
 
 class _GenericSubmissionParser(ABC):
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: CustomLogger):
         self._logger = logger
 
     @abstractmethod
@@ -71,7 +71,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
         _COL_QUALIFIERS_SHIP_NAME_TO = ["to"]
         _COL_QUALIFIERS_SHIP_NAME = ["name", "ship", "item", "sale"]
 
-        def __init__(self, header: List[str], logger: logging.Logger):
+        def __init__(self, header: List[str], logger: CustomLogger):
             self.valid = False
             self.type: Optional[EntityType] = None
             self.col_index_price: Optional[int] = None
@@ -118,11 +118,11 @@ class _HTMLTableParser(_GenericSubmissionParser):
                 self.type = EntityType.STANDALONES
 
             if self.type is None or self.col_index_price is None:
-                logger.debug(f"Could not completely map columns {'|'.join(header)}")
+                logger.failure(f"Could not completely map columns {'|'.join(header)}", CustomLogger.LEVEL_DEBUG)
             else:
                 self.valid = True
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: CustomLogger):
         super().__init__(logger)
 
     def parse(self, submission: Submission) -> List[ParsedRedditSubmissionEntry]:
@@ -186,7 +186,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
 class SubmissionParsingSuite:
     _parsers: List[_GenericSubmissionParser]
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: CustomLogger):
         self._logger = logger
         self._parsers = [_HTMLTableParser(self._logger)]
 

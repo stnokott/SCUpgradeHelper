@@ -1,5 +1,11 @@
 """Provides utility classes and functions"""
+import enum
+import logging
 from datetime import timedelta
+from logging import Logger
+from typing import Union
+
+from colorama import init, Fore, Style, Back
 
 
 class StatusString:
@@ -49,3 +55,39 @@ def format_timedelta(delta: timedelta) -> str:
 
     output_str += f"{hours}:{minutes}:{seconds}"
     return output_str
+
+
+init(strip=False)
+
+
+class CustomLogger:
+    LEVEL_DEBUG = logging.DEBUG
+    LEVEL_INFO = logging.INFO
+    LEVEL_WARN = logging.WARNING
+    LEVEL_ERR = logging.ERROR
+
+    def __init__(self, name: str, level: int = LEVEL_INFO):
+        self._logger = Logger(name)
+        self._logger.setLevel(level)
+        self._logger.addHandler(logging.StreamHandler())
+
+    def debug(self, s: str):
+        self._logger.debug(s)
+
+    def header(self, s: str, level: int):
+        self._logger.log(level, Back.GREEN + Fore.BLACK + s + Style.RESET_ALL)
+
+    def success(self, s: str, level: int):
+        self._logger.log(level, Back.WHITE + Fore.GREEN + s + Style.RESET_ALL)
+
+    def failure(self, s: str, level: int):
+        self._logger.log(level, Back.WHITE + Fore.RED + s + Style.RESET_ALL)
+
+    def info(self, s: str):
+        self._logger.info(Fore.GREEN + s + Style.RESET_ALL)
+
+    def warning(self, s: str):
+        self._logger.warning(Back.YELLOW + Fore.BLACK + s + Style.RESET_ALL)
+
+    def error(self, s: str):
+        self._logger.error(Back.RED + Fore.WHITE + s + Style.RESET_ALL)

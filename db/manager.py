@@ -1,5 +1,4 @@
 """Manager for database entities"""
-import logging
 from datetime import datetime
 from typing import List, Optional, Type, Union
 
@@ -26,7 +25,7 @@ from db.entity import (
     Standalone,
     UpdateLog,
 )
-from util import StatusString
+from util import StatusString, CustomLogger
 
 
 class EntityManager:
@@ -34,7 +33,7 @@ class EntityManager:
     Manages the application's database and its entities
     """
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: CustomLogger):
         self._engine = create_engine(f"sqlite:///{DATABASE_FILEPATH}", echo=False)
         configure_mappers()
         self._session = Session(bind=self._engine, expire_on_commit=False)
@@ -53,7 +52,7 @@ class EntityManager:
         self._logger.debug(f"Checking {UpdateLog.__name__} entry count...")
         log_count = self._session.query(UpdateLog).count()
         if not log_count > UPDATE_LOGS_ENTRY_LIMIT:
-            self._logger.debug("Limit not exceeded, no cleanup necessary.")
+            self._logger.success("Limit not exceeded, no cleanup necessary.", CustomLogger.LEVEL_DEBUG)
             return
 
         self._logger.debug(">>> Limit exceeded, cleaning entries...")
@@ -100,7 +99,7 @@ class EntityManager:
         self, entities: List[Union[Manufacturer, Ship, Standalone, Upgrade]]
     ) -> None:
         if len(entities) == 0:
-            self._logger.info(
+            self._logger.warning(
                 f">>> No entities passed to {self._update_entities.__name__}."
             )
             return
@@ -127,8 +126,9 @@ class EntityManager:
                 self._logger.debug(f">>> Adding {entity}.")
                 new_count += 1
         if new_count > 0:
-            self._logger.info(
-                f">>> Added {new_count} new {entity_type_name}(s) to database."
+            self._logger.success(
+                f">>> Added {new_count} new {entity_type_name}(s) to database.",
+                CustomLogger.LEVEL_INFO
             )
         else:
             self._logger.info(f">>> No new {entity_type_name}(s) detected.")
@@ -245,8 +245,9 @@ class EntityManager:
                 self._logger.warning(f"Match [{result[0]}] <-> [{name}] needs to be reviewed.")
             return self._get_ship_id_by_manu_name(result[0])
         else:
-            self._logger.debug(
-                f"Ship name [{name}] could not be resolved to entry in database!"
+            self._logger.failure(
+                f"Ship name [{name}] could not be resolved to entry in database!",
+                CustomLogger.LEVEL_DEBUG
             )
             return None
 
