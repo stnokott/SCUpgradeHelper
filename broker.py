@@ -8,9 +8,11 @@ from data.provider import (
     DataProviderManager,
     ShipDataProvider,
     OfficialUpgradeDataProvider,
-    OfficialStandaloneDataProvider, DataProviderType, RedditDataProvider,
+    OfficialStandaloneDataProvider,
+    DataProviderType,
+    RedditDataProvider,
 )
-from data.scrape.submissionparser import ParsedRedditSubmissionEntry
+from data.scraper.submissionparser import ParsedRedditSubmissionEntry
 from db.entity import Ship, Upgrade, UpdateType, EntityType, Standalone
 from db.manager import EntityManager
 
@@ -124,11 +126,13 @@ class SCDataBroker:
                             Standalone(
                                 price_usd=entry.price_usd,
                                 store_name=entry.store_name,
-                                ship_id=ship_id
+                                ship_id=ship_id,
                             )
                         )
                     else:
-                        self._logger.debug(f"Ship name [{entry.ship_name}] could not be resolved!")
+                        self._logger.debug(
+                            f"Ship name [{entry.ship_name}] could not be resolved!"
+                        )
                 elif entry.entity_type == EntityType.UPGRADES:
                     ship_id_from = self._em.get_ship_id_by_name(entry.ship_name_from)
                     ship_id_to = self._em.get_ship_id_by_name(entry.ship_name_to)
@@ -138,7 +142,7 @@ class SCDataBroker:
                                 price_usd=entry.price_usd,
                                 store_name=entry.store_name,
                                 ship_id_from=ship_id_from,
-                                ship_id_to=ship_id_to
+                                ship_id_to=ship_id_to,
                             )
                         )
                     else:
@@ -148,7 +152,8 @@ class SCDataBroker:
                         if ship_id_to is None:
                             unresolved_ship_names.append(entry.ship_name_to)
                         self._logger.debug(
-                            f"Ignored Reddit upgrade because ship name(s) [{', '.join(unresolved_ship_names)}] could not be resolved!")
+                            f"Ignored Reddit upgrade because ship name(s) [{', '.join(unresolved_ship_names)}] could not be resolved!"
+                        )
             self._em.update_standalones(standalones)
             self._em.update_upgrades(upgrades)
 

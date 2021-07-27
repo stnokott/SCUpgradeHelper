@@ -12,7 +12,7 @@ from praw.models import Submission
 from requests import Session
 
 from const import RSI_SCRAPER_STORE_NAME
-from data.scrape.submissionparser import (
+from data.scraper.submissionparser import (
     SubmissionParsingSuite,
     ParsedRedditSubmissionEntry,
 )
@@ -21,7 +21,7 @@ from db.entity import Ship, Manufacturer, Upgrade, Standalone
 
 class RedditScraper:
     """
-    Class to scrape data from /r/starcitizen_trades
+    Class to scraper data from /r/starcitizen_trades
     """
 
     __SUBREDDIT_NAME = "starcitizen_trades"
@@ -81,7 +81,7 @@ class RedditScraper:
 
 class RSIScraper:
     """
-    Class to scrape data from official RSI page
+    Class to scraper data from official RSI page
     """
 
     __SHIP_LIST_URL = "https://robertsspaceindustries.com/ship-matrix/index"

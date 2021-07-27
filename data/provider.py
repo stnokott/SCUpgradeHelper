@@ -5,8 +5,13 @@ from abc import abstractmethod
 from datetime import timedelta, datetime
 from typing import List, Tuple, Any, Type
 
-from const import SHIP_DATA_EXPIRY, UPGRADE_DATA_EXPIRY, STANDALONE_DATA_EXPIRY, REDDIT_DATA_EXPIRY
-from data.scrape.scraper import RSIScraper, RedditScraper
+from const import (
+    SHIP_DATA_EXPIRY,
+    UPGRADE_DATA_EXPIRY,
+    STANDALONE_DATA_EXPIRY,
+    REDDIT_DATA_EXPIRY,
+)
+from data.scraper.scraper import RSIScraper, RedditScraper
 from db.entity import Ship, Upgrade, Standalone, Base
 from util import format_timedelta
 
@@ -47,7 +52,11 @@ class DataProvider:
     """
 
     def __init__(
-        self, initial_data: List[Any], last_loaded: datetime, data_lifetime: timedelta, logger: logging.Logger
+        self,
+        initial_data: List[Any],
+        last_loaded: datetime,
+        data_lifetime: timedelta,
+        logger: logging.Logger,
     ):
         self._data = initial_data
         self.data_expiry = Expiry(last_loaded, data_lifetime)
@@ -63,7 +72,9 @@ class DataProvider:
     def _update_expiry(self) -> None:
         self.data_expiry.last_updated = datetime.now()
 
-    def get_data(self, force: bool = False, echo: bool = False) -> Tuple[List[Any], bool]:
+    def get_data(
+        self, force: bool = False, echo: bool = False
+    ) -> Tuple[List[Any], bool]:
         """
         Retrieve this data provider's data
         Args:
@@ -77,7 +88,9 @@ class DataProvider:
         self._logger.info(f"Checking {self.__class__.__name__} expiry...")
         refreshed = False
         if self.data_expiry.is_expired():
-            self._logger.info(f">>> {self.__class__.__name__} data expired, updating...")
+            self._logger.info(
+                f">>> {self.__class__.__name__} data expired, updating..."
+            )
             self._refresh_data()
             refreshed = True
         elif force:
@@ -138,7 +151,9 @@ class ShipDataProvider(DataProvider):
     Provides data about ships in concept, development or game
     """
 
-    def __init__(self, initial_data: List[Ship], last_loaded: datetime, logger: logging.Logger):
+    def __init__(
+        self, initial_data: List[Ship], last_loaded: datetime, logger: logging.Logger
+    ):
         super().__init__(initial_data, last_loaded, SHIP_DATA_EXPIRY, logger)
         self.__scraper = RSIScraper(self._logger)
 
@@ -170,7 +185,9 @@ class OfficialStandaloneDataProvider(DataProvider):
         """
         Updates underlying ship data
         """
-        self._data = self._scraper.get_standalones(self.__ship_data_provider.get_data()[0])
+        self._data = self._scraper.get_standalones(
+            self.__ship_data_provider.get_data()[0]
+        )
         self._update_expiry()
 
 

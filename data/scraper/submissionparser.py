@@ -35,7 +35,9 @@ class ParsedRedditSubmissionEntry:
         self.store_name: str = args[2]
         self.ship_name: Optional[str] = kwargs.get("ship_name") or None
         if self.ship_name is not None and len(self.ship_name) > MAX_SHIP_NAME_LENGTH:
-            raise NotParsableException(f"Name {self.ship_name} too long, unlikely to be ship")
+            raise NotParsableException(
+                f"Name {self.ship_name} too long, unlikely to be ship"
+            )
         self.ship_name_from: Optional[str] = kwargs.get("ship_name_from") or None
         self.ship_name_to: Optional[str] = kwargs.get("ship_name_to") or None
         if self.entity_type == EntityType.UPGRADES and (
@@ -123,9 +125,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
     def __init__(self, logger: logging.Logger):
         super().__init__(logger)
 
-    def parse(
-        self, submission: Submission
-    ) -> List[ParsedRedditSubmissionEntry]:
+    def parse(self, submission: Submission) -> List[ParsedRedditSubmissionEntry]:
         html = submission.selftext_html
         soup = BeautifulSoup(html, "html.parser")
         parsed_submissions = []
