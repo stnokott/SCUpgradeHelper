@@ -11,7 +11,8 @@ from bs4 import BeautifulSoup
 from praw.models import Submission
 from requests import Session
 
-from db.entity import Ship, Manufacturer, Upgrade, Standalone
+from data.scrape.submissionparser import SubmissionParsingSuite
+from db.entity import Ship, Manufacturer, Upgrade, Standalone, Purchasable
 
 
 class RedditScraper:
@@ -32,7 +33,16 @@ class RedditScraper:
         )
         self._subreddit = self._reddit.subreddit(self.__SUBREDDIT_NAME)
         self._logger = logger
-        self._get_latest_store_posts()
+        self._submission_parser = SubmissionParsingSuite(self._logger)
+
+    def get_items(self) -> List[Purchasable]:
+        submissions = self._get_latest_store_posts()
+        items = []
+        for submission in submissions:
+            item = self._submission_parser.parse(submission)
+            if item is not None:
+                items.append(item)
+        return items
 
     def _get_latest_store_posts(self) -> List[Submission]:
         """
@@ -48,7 +58,9 @@ class RedditScraper:
         filtered_submissions = self._filter_good_submissions(submissions)
         return filtered_submissions
 
-    def _filter_good_submissions(self, submissions: List[Submission]) -> List[Submission]:
+    def _filter_good_submissions(
+        self, submissions: List[Submission]
+    ) -> List[Submission]:
         """
         Filter submissions to follow certain guidelines such as a specific trader history
         Args:
@@ -57,8 +69,12 @@ class RedditScraper:
             Filtered list of submissions
         """
         return list(
-            filter(lambda s: s.author_flair_text is not None and self.__USER_FLAIR_VALIDATOR.match(s.author_flair_text),
-                   submissions))
+            filter(
+                lambda s: s.author_flair_text is not None
+                and self.__USER_FLAIR_VALIDATOR.match(s.author_flair_text),
+                submissions,
+            )
+        )
 
 
 class RSIScraper:
@@ -123,7 +139,7 @@ class RSIScraper:
         return self.create_standalones(ships, self.get_skus())
 
     def create_standalones(
-            self, ships: List[Ship], skus: Dict[str, float]
+        self, ships: List[Ship], skus: Dict[str, float]
     ) -> List[Standalone]:
         """
         Overwrites ship prices with list of sku prices, if found in sku list
@@ -152,7 +168,11 @@ class RSIScraper:
                 sku_candidates,
             )
             new_price = skus[sku_name]
-            standalones.append(Standalone(ship_id=ship.id, price_usd=new_price, store_name=self.__STORE_NAME))
+            standalones.append(
+                Standalone(
+                    ship_id=ship.id, price_usd=new_price, store_name=self.__STORE_NAME
+                )
+            )
         return standalones
 
     def get_skus(self) -> Dict[str, float]:
@@ -328,7 +348,7 @@ class RSIScraper:
                 if upgr1["upgradePrice"] < upgr2["upgradePrice"]
                 else upgr2
             ),
-            list(filter(lambda u: u["upgradePrice"] is not None, available_upgrades))
+            list(filter(lambda u: u["upgradePrice"] is not None, available_upgrades)),
         )
         return Upgrade(
             ship_from_id=int(from_id),
