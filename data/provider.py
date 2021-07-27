@@ -97,8 +97,9 @@ class DataProvider:
             self._refresh_data()
             refreshed = True
         elif echo:
-            self._logger.info(
-                f">>> {self.__class__.__name__} data valid, expires in {self.data_expiry.expires_in()}"
+            self._logger.success(
+                f">>> {self.__class__.__name__} data valid, expires in {self.data_expiry.expires_in()}",
+                CustomLogger.LEVEL_INFO,
             )
         return self._data, refreshed
 

@@ -12,6 +12,7 @@ class StatusString:
     """
     Provides status strings for logging
     """
+
     __DONE_STR = "DONE"
 
     def __init__(self, status: str):
@@ -72,19 +73,19 @@ class CustomLogger:
         self._logger.addHandler(logging.StreamHandler())
 
     def debug(self, s: Union[str, Exception]):
-        self._logger.debug(str(s))
+        self._logger.debug(Fore.BLACK + str(s) + Style.RESET_ALL)
 
     def header(self, s: Union[str, Exception], level: int):
         self._logger.log(level, Back.GREEN + Fore.BLACK + str(s) + Style.RESET_ALL)
 
     def success(self, s: Union[str, Exception], level: int):
-        self._logger.log(level, Back.WHITE + Fore.GREEN + str(s) + Style.RESET_ALL)
+        self._logger.log(level, Back.BLACK + Fore.GREEN + str(s) + Style.RESET_ALL)
 
     def failure(self, s: Union[str, Exception], level: int):
-        self._logger.log(level, Back.WHITE + Fore.RED + str(s) + Style.RESET_ALL)
+        self._logger.log(level, Back.BLACK + Fore.RED + str(s) + Style.RESET_ALL)
 
     def info(self, s: Union[str, Exception]):
-        self._logger.info(Fore.GREEN + str(s) + Style.RESET_ALL)
+        self._logger.info(Back.BLACK + Fore.WHITE + str(s) + Style.RESET_ALL)
 
     def warning(self, s: Union[str, Exception]):
         self._logger.warning(Back.YELLOW + Fore.BLACK + str(s) + Style.RESET_ALL)

@@ -141,16 +141,9 @@ class SCDataBroker:
                                 ship_id_to=ship_id_to,
                             )
                         )
-                    else:
-                        unresolved_ship_names = []
-                        if ship_id_from is None:
-                            unresolved_ship_names.append(entry.ship_name_from)
-                        if ship_id_to is None:
-                            unresolved_ship_names.append(entry.ship_name_to)
-                        self._logger.failure(
-                            f"Ignored Reddit upgrade because ship name(s) [{', '.join(unresolved_ship_names)}] could not be resolved!",
-                            CustomLogger.LEVEL_DEBUG
-                        )
+            self._logger.info(
+                f"{len(entries) - (len(standalones) + len(upgrades))} Reddit entries could not be resolved."
+            )
             self._em.update_standalones(standalones)
             self._em.update_upgrades(upgrades)
 

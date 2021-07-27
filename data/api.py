@@ -29,7 +29,7 @@ class SCApi:
         self._logger.info("(this may take a while)")
         try:
             response = self._get("/ships")
-            self._logger.header("########### DONE ###########")
+            self._logger.header("########### DONE ###########", CustomLogger.LEVEL_INFO)
             return self._ships_from_json(response)
         except RequestUnsuccessfulException as e:
             self._logger.warning(f"Unsuccessful request to ships endpoint: {e}")

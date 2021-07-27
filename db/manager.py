@@ -14,7 +14,8 @@ from const import (
     SHIP_DATA_EXPIRY,
     STANDALONE_DATA_EXPIRY,
     UPGRADE_DATA_EXPIRY,
-    FUZZY_SEARCH_MIN_SCORE, FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE,
+    FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE,
+    fuzzy_search_min_score,
 )
 from db.entity import (
     UpdateType,
@@ -52,7 +53,7 @@ class EntityManager:
         self._logger.debug(f"Checking {UpdateLog.__name__} entry count...")
         log_count = self._session.query(UpdateLog).count()
         if not log_count > UPDATE_LOGS_ENTRY_LIMIT:
-            self._logger.success("Limit not exceeded, no cleanup necessary.", CustomLogger.LEVEL_DEBUG)
+            self._logger.debug("Limit not exceeded, no cleanup necessary.")
             return
 
         self._logger.debug(">>> Limit exceeded, cleaning entries...")
@@ -128,7 +129,7 @@ class EntityManager:
         if new_count > 0:
             self._logger.success(
                 f">>> Added {new_count} new {entity_type_name}(s) to database.",
-                CustomLogger.LEVEL_INFO
+                CustomLogger.LEVEL_INFO,
             )
         else:
             self._logger.info(f">>> No new {entity_type_name}(s) detected.")
@@ -231,30 +232,39 @@ class EntityManager:
 
     def find_ship_id_by_name(self, name: str) -> Optional[int]:
         ships: List[Ship] = self._session.query(Ship).all()
-        if ships is None or len(ships) == 0:
+        if ships is None or len(ships) == 0 or name == "" or name == '"':
             return None
 
-        result = process.extractOne(
-            name,
-            [f"{ship.manufacturer.code} {ship.name}" for ship in ships],
-            scorer=fuzz.WRatio
-        )
+        candidate_sets = [
+            [ship.name for ship in ships],
+            [f"{ship.manufacturer.name} {ship.name}" for ship in ships],
+        ]  # try with base ship name and with manufacturer if no match found
 
-        if result is not None and result[1] >= FUZZY_SEARCH_MIN_SCORE:
-            if result[1] < FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE:
-                self._logger.warning(f"Match [{result[0]}] <-> [{name}] needs to be reviewed.")
-            return self._get_ship_id_by_manu_name(result[0])
-        else:
-            self._logger.failure(
-                f"Ship name [{name}] could not be resolved to entry in database!",
-                CustomLogger.LEVEL_DEBUG
+        for candidate_set in candidate_sets:
+            result = process.extractOne(
+                name,
+                candidate_set,
+                scorer=fuzz.token_set_ratio,
             )
-            return None
 
-    def _get_ship_id_by_manu_name(self, s: str):
-        m = aliased(Manufacturer)
+            if result is not None and result[1] >= fuzzy_search_min_score(
+                min(len(name), len(result[0]))
+            ):
+                ship_id = self._get_ship_id_by_name(result[0])
+                if ship_id is not None:
+                    if result[1] < FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE:
+                        self._logger.warning(
+                            f"Match [{name}] -> [{result[0]}] needs to be reviewed (score {result[1]}/100)."
+                        )
+                    return ship_id
+        self._logger.failure(
+            f"Ship name [{name}] could not be resolved to entry in database!",
+            CustomLogger.LEVEL_DEBUG,
+        )
+        return None
 
-        result = self._session.query(Ship).join(m, Ship.manufacturer).filter((m.code + ' ' + Ship.name) == s).first()
+    def _get_ship_id_by_name(self, s: str):
+        result = self._session.query(Ship).where(Ship.name == s).first()
         if result is not None:
             return result.id
         else:

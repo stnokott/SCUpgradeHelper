@@ -30,7 +30,7 @@ class ParsedRedditSubmissionEntry:
         numeric_filter = filter(str.isdigit, args[1])
         fixed_price_string = "".join(numeric_filter)
         if len(fixed_price_string) == 0:
-            raise NotParsableException(f"Passed price [{args[1]}] not valid.")
+            raise NotParsableException(f"Price [{args[1]}] invalid")
         self.price_usd: float = float(fixed_price_string)
         self.store_name: str = args[2]
         self.ship_name: Optional[str] = kwargs.get("ship_name") or None
@@ -38,8 +38,9 @@ class ParsedRedditSubmissionEntry:
         self.ship_name_to: Optional[str] = kwargs.get("ship_name_to") or None
         for name in [self.ship_name, self.ship_name_from, self.ship_name_to]:
             if name is not None and any(
-                    key.lower() in name.lower() for key in REDDIT_PARSE_EXCLUDE_KEYWORDS):
-                raise NotParsableException(f"Ship name {name} contains exclude keyword, ignoring.")
+                key.lower() in name.lower() for key in REDDIT_PARSE_EXCLUDE_KEYWORDS
+            ):
+                raise NotParsableException(f"[{name}] contains exclude keyword")
         if self.entity_type == EntityType.UPGRADES and (
             self.ship_name_from is None or self.ship_name_to is None
         ):
@@ -118,7 +119,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
                 self.type = EntityType.STANDALONES
 
             if self.type is None or self.col_index_price is None:
-                logger.failure(f"Could not completely map columns {'|'.join(header)}", CustomLogger.LEVEL_DEBUG)
+                logger.debug(f"Could not completely map columns {'|'.join(header)}")
             else:
                 self.valid = True
 
@@ -133,7 +134,6 @@ class _HTMLTableParser(_GenericSubmissionParser):
             table_header = [tag.text for tag in table_tag.select("thead > tr > th")]
             table_metadata = self._TableMetadata(table_header, self._logger)
             if table_metadata.valid:
-                self._logger.debug(f"Found qualifying table: {'|'.join(table_header)}")
                 table_content = []
                 table_body = table_tag.select_one("tbody")
                 # html to python-readable
@@ -148,6 +148,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
                         price_usd = row[table_metadata.col_index_price]
                         store_name = "Reddit"
                         # TODO: parse store name
+                        # TODO: parse manufacturer name
                         if entity_type == EntityType.STANDALONES:
                             parsed_submissions.append(
                                 ParsedRedditSubmissionEntry(
@@ -175,7 +176,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
                         # Some rows might be used as headers and can thus be ignored
                         pass
                     except NotParsableException as e:
-                        self._logger.warning(e)
+                        self._logger.debug(f"Entry ignored, reason: {e}")
             else:
                 self._logger.debug(
                     f"Table ignored: {'|'.join(table_header)} ({submission.permalink})"
