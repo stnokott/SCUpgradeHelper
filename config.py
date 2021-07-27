@@ -6,7 +6,7 @@ import os
 
 from const import CONFIG_FILEPATH
 
-DEFAULT_VALUES = {"AUTH": {"SCApiKey": ""}}
+DEFAULT_VALUES = {"AUTH": {"redditclientid": "", "redditclientsecret": ""}}
 
 
 class ConfigProvider:
@@ -20,7 +20,6 @@ class ConfigProvider:
 
         # read AUTH section
         auth_section = self._get_section("AUTH")
-        self.sc_api_key = auth_section["scapikey"]
         self.reddit_client_id = auth_section["redditclientid"]
         self.reddit_client_secret = auth_section["redditclientsecret"]
         logger.info("Configuration parsed.")
