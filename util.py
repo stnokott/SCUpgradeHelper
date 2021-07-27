@@ -3,7 +3,7 @@ import enum
 import logging
 from datetime import timedelta
 from logging import Logger
-from typing import Union
+from typing import Union, Any
 
 from colorama import init, Fore, Style, Back
 
@@ -71,23 +71,23 @@ class CustomLogger:
         self._logger.setLevel(level)
         self._logger.addHandler(logging.StreamHandler())
 
-    def debug(self, s: str):
-        self._logger.debug(s)
+    def debug(self, s: Union[str, Exception]):
+        self._logger.debug(str(s))
 
-    def header(self, s: str, level: int):
-        self._logger.log(level, Back.GREEN + Fore.BLACK + s + Style.RESET_ALL)
+    def header(self, s: Union[str, Exception], level: int):
+        self._logger.log(level, Back.GREEN + Fore.BLACK + str(s) + Style.RESET_ALL)
 
-    def success(self, s: str, level: int):
-        self._logger.log(level, Back.WHITE + Fore.GREEN + s + Style.RESET_ALL)
+    def success(self, s: Union[str, Exception], level: int):
+        self._logger.log(level, Back.WHITE + Fore.GREEN + str(s) + Style.RESET_ALL)
 
-    def failure(self, s: str, level: int):
-        self._logger.log(level, Back.WHITE + Fore.RED + s + Style.RESET_ALL)
+    def failure(self, s: Union[str, Exception], level: int):
+        self._logger.log(level, Back.WHITE + Fore.RED + str(s) + Style.RESET_ALL)
 
-    def info(self, s: str):
-        self._logger.info(Fore.GREEN + s + Style.RESET_ALL)
+    def info(self, s: Union[str, Exception]):
+        self._logger.info(Fore.GREEN + str(s) + Style.RESET_ALL)
 
-    def warning(self, s: str):
-        self._logger.warning(Back.YELLOW + Fore.BLACK + s + Style.RESET_ALL)
+    def warning(self, s: Union[str, Exception]):
+        self._logger.warning(Back.YELLOW + Fore.BLACK + str(s) + Style.RESET_ALL)
 
-    def error(self, s: str):
-        self._logger.error(Back.RED + Fore.WHITE + s + Style.RESET_ALL)
+    def error(self, s: Union[str, Exception]):
+        self._logger.error(Back.RED + Fore.WHITE + str(s) + Style.RESET_ALL)
