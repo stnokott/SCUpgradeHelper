@@ -11,8 +11,12 @@ from bs4 import BeautifulSoup
 from praw.models import Submission
 from requests import Session
 
-from data.scrape.submissionparser import SubmissionParsingSuite
-from db.entity import Ship, Manufacturer, Upgrade, Standalone, Purchasable
+from const import RSI_SCRAPER_STORE_NAME
+from data.scrape.submissionparser import (
+    SubmissionParsingSuite,
+    ParsedRedditSubmissionEntry,
+)
+from db.entity import Ship, Manufacturer, Upgrade, Standalone
 
 
 class RedditScraper:
@@ -35,13 +39,11 @@ class RedditScraper:
         self._logger = logger
         self._submission_parser = SubmissionParsingSuite(self._logger)
 
-    def get_items(self) -> List[Purchasable]:
+    def get_parsed_submissions(self) -> List[ParsedRedditSubmissionEntry]:
         submissions = self._get_latest_store_posts()
         items = []
         for submission in submissions:
-            item = self._submission_parser.parse(submission)
-            if item is not None:
-                items.append(item)
+            items += self._submission_parser.parse(submission)
         return items
 
     def _get_latest_store_posts(self) -> List[Submission]:
@@ -94,8 +96,6 @@ class RSIScraper:
         "https://robertsspaceindustries.com/api/ship-upgrades/setContextToken"
     )
 
-    __STORE_NAME = "RSI"
-
     def __init__(self, logger: logging.Logger):
         self._logger = logger
         self._ships = None
@@ -106,7 +106,7 @@ class RSIScraper:
         Returns:
             list of ships generated from json
         """
-        self._logger.info("### REQUESTING SHIPS ###")
+        self._logger.info("### REQUESTING OFFICIAL SHIPS ###")
         ships = []
         response = requests.get(self.__SHIP_LIST_URL)
         # TODO: replace duplicate code
@@ -122,8 +122,10 @@ class RSIScraper:
                 ]
             except KeyError as e:
                 self._logger.warning(f">> Error occured while parsing ships json: {e}")
-        self._logger.info(f">>> {len(ships)} ships retrieved from {self.__STORE_NAME}.")
-        self._logger.info("########### DONE ###########")
+        self._logger.info(
+            f">>> {len(ships)} ships retrieved from {RSI_SCRAPER_STORE_NAME}."
+        )
+        self._logger.info("############## DONE #############")
         self._ships = ships
         return ships
 
@@ -138,8 +140,9 @@ class RSIScraper:
         """
         return self.create_standalones(ships, self.get_skus())
 
+    @classmethod
     def create_standalones(
-        self, ships: List[Ship], skus: Dict[str, float]
+        cls, ships: List[Ship], skus: Dict[str, float]
     ) -> List[Standalone]:
         """
         Overwrites ship prices with list of sku prices, if found in sku list
@@ -170,7 +173,9 @@ class RSIScraper:
             new_price = skus[sku_name]
             standalones.append(
                 Standalone(
-                    ship_id=ship.id, price_usd=new_price, store_name=self.__STORE_NAME
+                    ship_id=ship.id,
+                    price_usd=new_price,
+                    store_name=RSI_SCRAPER_STORE_NAME,
                 )
             )
         return standalones
@@ -236,8 +241,8 @@ class RSIScraper:
         Returns:
             list of upgrades for all ships provided
         """
-        self._logger.info("### REQUESTING UPGRADES ###")
-        self._logger.info(f">>> {len(from_ships)} ships will be processed.")
+        self._logger.info("### REQUESTING OFFICIAL UPGRADES ###")
+        self._logger.info(f">>> Base of {len(from_ships)} ships will be used.")
         session = self.create_anon_authorized_session()
         upgrades = []
         for (i, ship) in enumerate(from_ships):
@@ -247,7 +252,7 @@ class RSIScraper:
                 )
             upgrades += self.get_upgrades_by_ship_id(ship.id, session)
         self._logger.info(f">>> {len(upgrades)} upgrades found.")
-        self._logger.info("############ DONE #########")
+        self._logger.info("################ DONE ##############")
         return upgrades
 
     def get_upgrades_by_ship_id(self, ship_id: int, session: Session) -> List[Upgrade]:
@@ -280,6 +285,9 @@ class RSIScraper:
         try:
             upgrades = response.json()["data"]["to"]
             if upgrades is None or "ships" not in upgrades:
+                self._logger.warning(
+                    f"Invalid response for upgrades for upgrades from ship_id={ship_id}, ignoring."
+                )
                 return []
             return [
                 self.upgrade_from_json(upgrade_json, ship_id)
@@ -351,10 +359,10 @@ class RSIScraper:
             list(filter(lambda u: u["upgradePrice"] is not None, available_upgrades)),
         )
         return Upgrade(
-            ship_from_id=int(from_id),
-            ship_to_id=int(upgrade_json["id"]),
+            ship_id_from=int(from_id),
+            ship_id_to=int(upgrade_json["id"]),
             price_usd=float(int(cheapest_upgrade["upgradePrice"]) / 100),
-            store_name=cls.__STORE_NAME,
+            store_name=RSI_SCRAPER_STORE_NAME,
         )
 
 

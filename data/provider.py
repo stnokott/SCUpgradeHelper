@@ -1,12 +1,13 @@
 """Contains utility classes for providing data"""
+import enum
 import logging
 from abc import abstractmethod
 from datetime import timedelta, datetime
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Type
 
-from const import SHIP_DATA_EXPIRY, UPGRADE_DATA_EXPIRY, STANDALONE_DATE_EXPIRY
-from data.scraper import RSIScraper
-from db.entity import Ship, Upgrade, Standalone, EntityType
+from const import SHIP_DATA_EXPIRY, UPGRADE_DATA_EXPIRY, STANDALONE_DATA_EXPIRY, REDDIT_DATA_EXPIRY
+from data.scrape.scraper import RSIScraper, RedditScraper
+from db.entity import Ship, Upgrade, Standalone, Base
 from util import format_timedelta
 
 
@@ -90,6 +91,13 @@ class DataProvider:
         return self._data, refreshed
 
 
+class DataProviderType(enum.Enum):
+    SHIPS = "RSI Ships"
+    RSI_STANDALONES = "RSI Standalones"
+    RSI_UPGRADES = "RSI Upgrades"
+    REDDIT_ENTRIES = "Reddit entries"
+
+
 class DataProviderManager:
     """
     Class to manage data providers by their type
@@ -98,7 +106,7 @@ class DataProviderManager:
     def __init__(self):
         self._data_providers = {}
 
-    def get_data_provider(self, data_type: EntityType) -> DataProvider:
+    def get_data_provider(self, data_type: DataProviderType) -> DataProvider:
         """
         Return DataProvider instance by data_type
         Args:
@@ -108,16 +116,16 @@ class DataProviderManager:
 
         """
         if data_type not in self._data_providers:
-            raise ValueError(f"provider for data type {data_type} not found.")
+            raise ValueError(f"provider for update type {data_type} not found.")
         return self._data_providers[data_type]
 
     def add_data_provider(
-        self, data_type: EntityType, data_provider: DataProvider
+        self, data_type: DataProviderType, data_provider: DataProvider
     ) -> None:
         """
         Add data provider to manager if possible. Throws ValueError if already exists.
         Args:
-            data_type: data type to save the provider under
+            data_type: type to save the provider under
             data_provider: data provider to add
         """
         if data_type in self._data_providers:
@@ -142,7 +150,7 @@ class ShipDataProvider(DataProvider):
         self._update_expiry()
 
 
-class StandaloneDataProvider(DataProvider):
+class OfficialStandaloneDataProvider(DataProvider):
     """
     Provides data about standalone ship offers
     """
@@ -154,7 +162,7 @@ class StandaloneDataProvider(DataProvider):
         last_loaded: datetime,
         logger: logging.Logger,
     ):
-        super().__init__(initial_data, last_loaded, STANDALONE_DATE_EXPIRY, logger)
+        super().__init__(initial_data, last_loaded, STANDALONE_DATA_EXPIRY, logger)
         self.__ship_data_provider = ship_data_provider
         self._scraper = RSIScraper(self._logger)
 
@@ -166,7 +174,7 @@ class StandaloneDataProvider(DataProvider):
         self._update_expiry()
 
 
-class UpgradeDataProvider(DataProvider):
+class OfficialUpgradeDataProvider(DataProvider):
     """
     Provides data about ship upgrades
     """
@@ -187,4 +195,28 @@ class UpgradeDataProvider(DataProvider):
         Updates underlying ship data
         """
         self._data = self._scraper.get_upgrades(self.__ship_data_provider.get_data()[0])
+        self._update_expiry()
+
+
+class RedditDataProvider(DataProvider):
+    """
+    Provides data about store entries on Reddit
+    """
+
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        initial_data: List[Type[Base]],
+        last_loaded: datetime,
+        logger: logging.Logger,
+    ):
+        super().__init__(initial_data, last_loaded, REDDIT_DATA_EXPIRY, logger)
+        self._scraper = RedditScraper(client_id, client_secret, self._logger)
+
+    def _refresh_data(self) -> None:
+        """
+        Updates underlying entry data
+        """
+        self._data = self._scraper.get_parsed_submissions()
         self._update_expiry()

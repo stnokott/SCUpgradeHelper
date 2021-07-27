@@ -2,11 +2,13 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import event, Column, ForeignKey, Integer, Float, String, DateTime, Enum
+from sqlalchemy import event, Column, ForeignKey, Integer, Float, DateTime, Enum, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
+
+# TODO: EntityType/UpdateType: prüfen ob wirklich gebraucht
 
 
 class EntityType(enum.Enum):
@@ -19,6 +21,17 @@ class EntityType(enum.Enum):
     UPGRADES = "Upgrades"
 
 
+class UpdateType(enum.Enum):
+    """
+    Enum for specifying type of data update (e.g. when updating official standalone ships, use RSI_STANDALONES)
+    """
+    MANUFACTURERS = "Manufacturers"
+    SHIPS = "Ships"
+    RSI_STANDALONES = "Official Standalones"
+    RSI_UPGRADES = "Official Upgrades"
+    REDDIT_ENTITIES = "Reddit entities"
+
+
 class Manufacturer(Base):
     """
     Class representing a ship manufacturer
@@ -27,8 +40,8 @@ class Manufacturer(Base):
     __tablename__ = "MANUFACTURERS"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, unique=True, nullable=False)
-    code = Column(String, unique=True)
+    name = Column(Text, unique=True, nullable=False)
+    code = Column(Text, unique=True)
 
     def copy_attrs_to(self, target: "Manufacturer") -> None:
         """
@@ -59,10 +72,11 @@ class Ship(Base):
     """
 
     __tablename__ = "SHIPS"
+    __searchable__ = ["name"]
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     loaddate = Column(DateTime)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(Text, unique=True, nullable=False)
     manufacturer_id = Column(Integer, ForeignKey(Manufacturer.id), nullable=False)
 
     manufacturer = relationship("Manufacturer")
@@ -114,7 +128,7 @@ class Purchasable(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     loaddate = Column(DateTime)
     price_usd = Column(Float, nullable=False)
-    store_name = Column(String, nullable=False)
+    store_name = Column(Text, nullable=False)
 
 
 class Standalone(Purchasable):
@@ -171,27 +185,27 @@ class Upgrade(Purchasable):
 
     __tablename__ = "UPGRADES"
 
-    ship_from_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
-    ship_to_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
+    ship_id_from = Column(Integer, ForeignKey(Ship.id), nullable=False)
+    ship_id_to = Column(Integer, ForeignKey(Ship.id), nullable=False)
 
-    ship_from = relationship("Ship", foreign_keys=[ship_from_id])
-    ship_to = relationship("Ship", foreign_keys=[ship_to_id])
+    ship_from = relationship("Ship", foreign_keys=[ship_id_from])
+    ship_to = relationship("Ship", foreign_keys=[ship_id_to])
 
     def __eq__(self, other):
         return (
-            self.ship_from_id == other.ship_from_id
-            and self.ship_to_id == other.ship_to_id
-            and self.price_usd == other.price_usd
-            and self.store_name == other.store_name
+                self.ship_id_from == other.ship_id_from
+                and self.ship_id_to == other.ship_id_to
+                and self.price_usd == other.price_usd
+                and self.store_name == other.store_name
         )
 
     def __hash__(self):
         return hash(
             (
-                "ship_from_id",
-                self.ship_from_id,
-                "ship_to_id",
-                self.ship_to_id,
+                "ship_id_from",
+                self.ship_id_from,
+                "ship_id_to",
+                self.ship_id_to,
                 "price_usd",
                 self.price_usd,
                 "store_name",
@@ -201,10 +215,10 @@ class Upgrade(Purchasable):
 
     def __repr__(self):
         ship_from_name = (
-            self.ship_from.name if self.ship_from is not None else self.ship_from_id
+            self.ship_from.name if self.ship_from is not None else self.ship_id_from
         )
         ship_to_name = (
-            self.ship_to.name if self.ship_to is not None else self.ship_to_id
+            self.ship_to.name if self.ship_to is not None else self.ship_id_to
         )
         return (
             f"<{Upgrade.__name__}>(From [{ship_from_name}] to [{ship_to_name}]: "
@@ -233,20 +247,20 @@ class UpdateLog(Base):
     __tablename__ = "UPDATE_LOGS"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    data_type = Column(Enum(EntityType))
+    update_type = Column(Enum(UpdateType))
     loaddate = Column(DateTime)
 
     def __eq__(self, other):
         return (
-            self.data_type == other.data_type
-            and self.loaddate == other.loaddate
+                self.update_type == other.update_type
+                and self.loaddate == other.loaddate
         )
 
     def __hash__(self):
         return hash(
             (
                 "data_type",
-                self.data_type,
+                self.update_type,
                 "loaddate",
                 self.loaddate
             )
@@ -254,5 +268,5 @@ class UpdateLog(Base):
 
     def __repr__(self):
         return (
-            f"<{UpdateLog.__name__}>({self.data_type} updated at {self.loaddate})"
+            f"<{UpdateLog.__name__}>({self.update_type} updated at {self.loaddate})"
         )

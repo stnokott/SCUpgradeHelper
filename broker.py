@@ -6,12 +6,12 @@ from config import ConfigProvider
 from data.api import SCApi
 from data.provider import (
     DataProviderManager,
-    EntityType,
     ShipDataProvider,
-    UpgradeDataProvider,
-    StandaloneDataProvider,
+    OfficialUpgradeDataProvider,
+    OfficialStandaloneDataProvider, DataProviderType, RedditDataProvider,
 )
-from db.entity import Ship, Upgrade
+from data.scrape.submissionparser import ParsedRedditSubmissionEntry
+from db.entity import Ship, Upgrade, UpdateType, EntityType, Standalone
 from db.manager import EntityManager
 
 
@@ -28,27 +28,37 @@ class SCDataBroker:
         self._scapi = SCApi(config.sc_api_key, logger)
         self._data_provider_manager = DataProviderManager()
         ship_data_provider = ShipDataProvider(
-            self._em.get_ships(), self._em.get_loaddate(EntityType.SHIPS), logger
+            self._em.get_ships(), self._em.get_loaddate(UpdateType.SHIPS), logger
         )
         self._data_provider_manager.add_data_provider(
-            EntityType.SHIPS,
+            DataProviderType.SHIPS,
             ship_data_provider,
         )
         self._data_provider_manager.add_data_provider(
-            EntityType.STANDALONES,
-            StandaloneDataProvider(
-                self._em.get_standalones(),
+            DataProviderType.RSI_STANDALONES,
+            OfficialStandaloneDataProvider(
+                self._em.get_rsi_standalones(),
                 ship_data_provider,
-                self._em.get_loaddate(EntityType.STANDALONES),
+                self._em.get_loaddate(UpdateType.RSI_STANDALONES),
                 logger,
             ),
         )
         self._data_provider_manager.add_data_provider(
-            EntityType.UPGRADES,
-            UpgradeDataProvider(
-                self._em.get_upgrades(),
+            DataProviderType.RSI_UPGRADES,
+            OfficialUpgradeDataProvider(
+                self._em.get_rsi_upgrades(),
                 ship_data_provider,
-                self._em.get_loaddate(EntityType.UPGRADES),
+                self._em.get_loaddate(UpdateType.RSI_UPGRADES),
+                logger,
+            ),
+        )
+        self._data_provider_manager.add_data_provider(
+            DataProviderType.REDDIT_ENTRIES,
+            RedditDataProvider(
+                config.reddit_client_id,
+                config.reddit_client_secret,
+                self._em.get_reddit_entities(),
+                self._em.get_loaddate(UpdateType.REDDIT_ENTITIES),
                 logger,
             ),
         )
@@ -64,39 +74,86 @@ class SCDataBroker:
             echo: True if logging needed
         """
         self._update_ships(force, echo)
-        self._update_standalones(force, echo)
-        self._update_upgrades(force, echo)
+        self._update_rsi_standalones(force, echo)
+        self._update_rsi_upgrades(force, echo)
+        self._update_reddit_entries(force, echo)
 
     def _update_ships(self, force: bool = False, echo: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(
-            EntityType.SHIPS
+            DataProviderType.SHIPS
         )
         ships, updated = ship_data_provider.get_data(force, echo)
-        self._log_update(EntityType.SHIPS)
+        self._log_update(UpdateType.SHIPS)
         if updated or force:
             self._em.update_manufacturers([ship.manufacturer for ship in ships])
             self._em.update_ships(ships)
 
-    def _update_standalones(self, force: bool = False, echo: bool = False) -> None:
+    def _update_rsi_standalones(self, force: bool = False, echo: bool = False) -> None:
         standalone_data_provider = self._data_provider_manager.get_data_provider(
-            EntityType.STANDALONES
+            DataProviderType.RSI_STANDALONES
         )
         standalones, updated = standalone_data_provider.get_data(force, echo)
-        self._log_update(EntityType.STANDALONES)
+        self._log_update(UpdateType.RSI_STANDALONES)
         if updated or force:
             self._em.update_standalones(standalones)
 
-    def _update_upgrades(self, force: bool = False, echo: bool = False) -> None:
+    def _update_rsi_upgrades(self, force: bool = False, echo: bool = False) -> None:
         upgrade_data_provider = self._data_provider_manager.get_data_provider(
-            EntityType.UPGRADES
+            DataProviderType.RSI_UPGRADES
         )
         upgrades, updated = upgrade_data_provider.get_data(force, echo)
-        self._log_update(EntityType.UPGRADES)
+        self._log_update(UpdateType.RSI_UPGRADES)
         if updated or force:
             self._em.update_upgrades(upgrades)
 
-    def _log_update(self, data_type: EntityType) -> None:
-        self._em.log_update(data_type)
+    def _update_reddit_entries(self, force: bool = False, echo: bool = False) -> None:
+        reddit_data_provider = self._data_provider_manager.get_data_provider(
+            DataProviderType.REDDIT_ENTRIES
+        )
+        entries: List[ParsedRedditSubmissionEntry]
+        entries, updated = reddit_data_provider.get_data(force, echo)
+        self._log_update(UpdateType.REDDIT_ENTITIES)
+        if updated or force:
+            standalones = []
+            upgrades = []
+            for entry in entries:
+                if entry.entity_type == EntityType.STANDALONES:
+                    ship_id = self._em.get_ship_id_by_name(entry.ship_name)
+                    if ship_id is not None:
+                        standalones.append(
+                            Standalone(
+                                price_usd=entry.price_usd,
+                                store_name=entry.store_name,
+                                ship_id=ship_id
+                            )
+                        )
+                    else:
+                        self._logger.debug(f"Ship name [{entry.ship_name}] could not be resolved!")
+                elif entry.entity_type == EntityType.UPGRADES:
+                    ship_id_from = self._em.get_ship_id_by_name(entry.ship_name_from)
+                    ship_id_to = self._em.get_ship_id_by_name(entry.ship_name_to)
+                    if ship_id_from is not None and ship_id_to is not None:
+                        upgrades.append(
+                            Upgrade(
+                                price_usd=entry.price_usd,
+                                store_name=entry.store_name,
+                                ship_id_from=ship_id_from,
+                                ship_id_to=ship_id_to
+                            )
+                        )
+                    else:
+                        unresolved_ship_names = []
+                        if ship_id_from is None:
+                            unresolved_ship_names.append(entry.ship_name_from)
+                        if ship_id_to is None:
+                            unresolved_ship_names.append(entry.ship_name_to)
+                        self._logger.debug(
+                            f"Ignored Reddit upgrade because ship name(s) [{', '.join(unresolved_ship_names)}] could not be resolved!")
+            self._em.update_standalones(standalones)
+            self._em.update_upgrades(upgrades)
+
+    def _log_update(self, update_type: UpdateType) -> None:
+        self._em.log_update(update_type)
 
     def get_ships(self, force_update: bool = False) -> List[Ship]:
         """
@@ -119,5 +176,5 @@ class SCDataBroker:
         Returns:
             list of upgrades
         """
-        self._update_upgrades(force_update)
-        return self._em.get_upgrades()
+        self._update_rsi_upgrades(force_update)
+        return self._em.get_rsi_upgrades()
