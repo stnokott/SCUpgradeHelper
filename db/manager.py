@@ -241,11 +241,16 @@ class EntityManager:
         ]  # try with base ship name and with manufacturer if no match found
 
         for candidate_set in candidate_sets:
-            result = process.extractOne(
+            results = process.extract(
                 name,
                 candidate_set,
                 scorer=fuzz.token_set_ratio,
+                limit=3,
             )
+            max_score = max([result[1] for result in results])
+            best_candidates = list(filter(lambda c: c[1] == max_score, results))
+            best_candidates.sort(key=lambda c: len(c[0]), reverse=True)
+            result = best_candidates[0]
 
             if result is not None and result[1] >= fuzzy_search_min_score(
                 min(len(name), len(result[0]))
@@ -255,6 +260,11 @@ class EntityManager:
                     if result[1] < FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE:
                         self._logger.warning(
                             f"Match [{name}] -> [{result[0]}] needs to be reviewed (score {result[1]}/100)."
+                        )
+                    else:
+                        self._logger.success(
+                            f"Mapped [{name}] -> [{result[0]}] (score {result[1]}/100).",
+                            CustomLogger.LEVEL_DEBUG,
                         )
                     return ship_id
         self._logger.failure(
