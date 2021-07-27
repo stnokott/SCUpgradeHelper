@@ -106,14 +106,16 @@ class RSIScraper:
         Returns:
             list of ships generated from json
         """
-        self._logger.header("### REQUESTING OFFICIAL SHIPS ###", CustomLogger.LEVEL_INFO)
+        self._logger.header(
+            "### REQUESTING OFFICIAL SHIPS ###", CustomLogger.LEVEL_INFO
+        )
         ships = []
         response = requests.get(self.__SHIP_LIST_URL)
         # TODO: replace duplicate code
         if response.status_code != 200:
             self._logger.failure(
                 f">>> Request to ship list endpoint {response.url} unsuccessful: {response.content}",
-                CustomLogger.LEVEL_WARN
+                CustomLogger.LEVEL_WARN,
             )
         else:
             try:
@@ -122,12 +124,17 @@ class RSIScraper:
                     for ship_json in response.json()["data"]
                 ]
             except KeyError as e:
-                self._logger.failure(f">> Error occured while parsing ships json: {e}", CustomLogger.LEVEL_WARN)
+                self._logger.failure(
+                    f">> Error occured while parsing ships json: {e}",
+                    CustomLogger.LEVEL_WARN,
+                )
         self._logger.success(
             f">>> {len(ships)} ships retrieved from {RSI_SCRAPER_STORE_NAME}.",
-            CustomLogger.LEVEL_WARN
+            CustomLogger.LEVEL_WARN,
         )
-        self._logger.header("############## DONE #############", CustomLogger.LEVEL_INFO)
+        self._logger.header(
+            "############## DONE #############", CustomLogger.LEVEL_INFO
+        )
         self._ships = ships
         return ships
 
@@ -196,7 +203,7 @@ class RSIScraper:
         # TODO: taxes?
         while rows_fetched < total_rows:
             response = requests.post(
-                "https://robertsspaceindustries.com/api/store/getSKUs",
+                self.__SKU_LIST_URL,
                 data={
                     "itemType": "skus",
                     "page": current_page,
@@ -210,7 +217,7 @@ class RSIScraper:
             if response.status_code != 200:
                 self._logger.failure(
                     f"Request to SKU endpoint {response.url} unsuccessful: {response.content}",
-                    CustomLogger.LEVEL_WARN
+                    CustomLogger.LEVEL_WARN,
                 )
                 return skus
             try:
@@ -231,7 +238,10 @@ class RSIScraper:
                 rows_fetched += sku_json["rowcount"]
                 current_page += 1
             except KeyError as e:
-                self._logger.failure(f"Error occured while parsing sku json: {e}", CustomLogger.LEVEL_WARN)
+                self._logger.failure(
+                    f"Error occured while parsing sku json: {e}",
+                    CustomLogger.LEVEL_WARN,
+                )
                 return skus
         return skus
 
@@ -244,7 +254,9 @@ class RSIScraper:
         Returns:
             list of upgrades for all ships provided
         """
-        self._logger.header("### REQUESTING OFFICIAL UPGRADES ###", CustomLogger.LEVEL_INFO)
+        self._logger.header(
+            "### REQUESTING OFFICIAL UPGRADES ###", CustomLogger.LEVEL_INFO
+        )
         self._logger.info(f">>> Base of {len(from_ships)} ships will be used.")
         session = self.create_anon_authorized_session()
         upgrades = []
@@ -254,8 +266,12 @@ class RSIScraper:
                     f">>> {round((i + 1) / len(from_ships) * 100, 2)}% processed."
                 )
             upgrades += self.get_upgrades_by_ship_id(ship.id, session)
-        self._logger.success(f">>> {len(upgrades)} upgrades found.", CustomLogger.LEVEL_INFO)
-        self._logger.header("################ DONE ##############", CustomLogger.LEVEL_INFO)
+        self._logger.success(
+            f">>> {len(upgrades)} upgrades found.", CustomLogger.LEVEL_INFO
+        )
+        self._logger.header(
+            "################ DONE ##############", CustomLogger.LEVEL_INFO
+        )
         return upgrades
 
     def get_upgrades_by_ship_id(self, ship_id: int, session: Session) -> List[Upgrade]:
@@ -283,7 +299,7 @@ class RSIScraper:
         if response.status_code != 200:
             self._logger.failure(
                 f"Request to upgrades endpoint {response.url} unsuccessful: {response.content}",
-                CustomLogger.LEVEL_WARN
+                CustomLogger.LEVEL_WARN,
             )
             return []
         try:
@@ -291,7 +307,7 @@ class RSIScraper:
             if upgrades is None or "ships" not in upgrades:
                 self._logger.failure(
                     f"Invalid response for upgrades for upgrades from ship_id={ship_id}, ignoring.",
-                    CustomLogger.LEVEL_WARN
+                    CustomLogger.LEVEL_WARN,
                 )
                 return []
             return [
@@ -299,7 +315,10 @@ class RSIScraper:
                 for upgrade_json in upgrades["ships"]
             ]
         except (KeyError, TypeError) as e:
-            self._logger.failure(f"Error occured while parsing upgrades json: {e}", CustomLogger.LEVEL_DEBUG)
+            self._logger.failure(
+                f"Error occured while parsing upgrades json: {e}",
+                CustomLogger.LEVEL_DEBUG,
+            )
             return []
 
     def set_currency_usd(self):
