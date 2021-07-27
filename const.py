@@ -54,6 +54,7 @@ REDDIT_PARSE_EXCLUDE_KEYWORDS = [
     "Juke Box",
     " Flower",
     " Cactus",
+    " Tree",
 ]
 
 FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE = 90
