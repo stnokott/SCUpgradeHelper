@@ -3,19 +3,20 @@ from datetime import datetime
 from typing import List, Optional, Type, Union
 
 from fuzzywuzzy import process, fuzz
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, configure_mappers
-from sqlalchemy.sql.expression import func
+from sqlalchemy import create_engine, DateTime
+from sqlalchemy.orm import Session, configure_mappers, Query
+from sqlalchemy.sql.expression import func, or_, cast
 
 from const import (
     DATABASE_FILEPATH,
     UPDATE_LOGS_ENTRY_LIMIT,
     RSI_SCRAPER_STORE_NAME,
     SHIP_DATA_EXPIRY,
-    STANDALONE_DATA_EXPIRY,
-    UPGRADE_DATA_EXPIRY,
+    RSI_STANDALONE_DATA_EXPIRY,
+    RSI_UPGRADE_DATA_EXPIRY,
     FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE,
     fuzzy_search_min_score,
+    REDDIT_DATA_EXPIRY,
 )
 from db.entity import (
     UpdateType,
@@ -68,32 +69,76 @@ class EntityManager:
             ).delete()
         self._session.commit()
 
+    def _query_rsi_standalones(self) -> Query:
+        return self._session.query(Standalone).filter(
+            Standalone.store.has(Store.name == RSI_SCRAPER_STORE_NAME)
+        )
+
+    def _query_rsi_upgrades(self) -> Query:
+        return self._session.query(Upgrade).filter(
+            Upgrade.store.has(Store.name == RSI_SCRAPER_STORE_NAME)
+        )
+
+    def _query_reddit_standalones(self) -> Query:
+        return self._session.query(Standalone).filter(
+            or_(
+                Standalone.store.has(Store.url.ilike("%reddit.com%")),
+                Standalone.store.has(Store.url.ilike("%redd.it%")),
+            )
+        )
+
+    def _query_reddit_upgrades(self) -> Query:
+        return self._session.query(Upgrade).filter(
+            or_(
+                Upgrade.store.has(Store.url.ilike("%reddit.com%")),
+                Upgrade.store.has(Store.url.ilike("%redd.it%")),
+            )
+        )
+
     def _remove_stale_entities(self, update_type: UpdateType) -> None:
-        # TODO: differentiate between official and Reddit entries
-        return
         now = datetime.now()
-        if update_type == Ship:
-            query = self._session.query(Ship).where(
-                now - Ship.loaddate > SHIP_DATA_EXPIRY
-            )
-        elif update_type == Standalone:
-            query = self._session.query(Standalone).where(
-                now - Standalone.loaddate > STANDALONE_DATA_EXPIRY
-            )
-        elif update_type == Upgrade:
-            query = self._session.query(Upgrade).where(
-                now - Upgrade.loaddate > UPGRADE_DATA_EXPIRY
-            )
+        deletion = []
+        if update_type == UpdateType.SHIPS:
+            ships: List[Ship] = self._session.query(Ship).all()
+            deletion = [
+                ship for ship in ships if now - ship.loaddate > SHIP_DATA_EXPIRY
+            ]
+        elif update_type == UpdateType.RSI_STANDALONES:
+            standalones: List[Standalone] = self._session.query(Standalone).all()
+            deletion = [
+                standalone
+                for standalone in standalones
+                if now - standalone.loaddate > RSI_STANDALONE_DATA_EXPIRY
+            ]
+        elif update_type == UpdateType.RSI_UPGRADES:
+            upgrades = self._query_rsi_upgrades().all()
+            deletion = [
+                upgrade
+                for upgrade in upgrades
+                if now - upgrade.loaddate > RSI_UPGRADE_DATA_EXPIRY
+            ]
+        elif update_type == UpdateType.REDDIT_STANDALONES:
+            standalones = self._query_reddit_standalones().all()
+            deletion = [
+                standalone
+                for standalone in standalones
+                if now - standalone.loaddate > REDDIT_DATA_EXPIRY
+            ]
+        elif update_type == UpdateType.REDDIT_UPGRADES:
+            upgrades = self._query_reddit_upgrades().all()
+            deletion = [
+                upgrade
+                for upgrade in upgrades
+                if now - upgrade.loaddate > REDDIT_DATA_EXPIRY
+            ]
         else:
             self._logger.debug(
                 f"Ignoring request to remove stale entities for type {update_type}"
             )
             return
-        deleted_count = 0
-        for item in query:
-            deleted_count += 1
+        for item in deletion:
             self._session.delete(item)
-        self._logger.info(f"Deleting {deleted_count} stale entries for {update_type}")
+        self._logger.info(f"Deleting {len(deletion)} stale entries for {update_type}")
         self._session.commit()
 
     def find_store(self, name: str, url: str) -> Store:
@@ -153,35 +198,14 @@ class EntityManager:
             return self._session.query(Standalone).all()
         elif entity_type == Upgrade:
             return self._session.query(Upgrade).all()
-        elif entity_type in [UpdateType.RSI_STANDALONES, UpdateType.RSI_UPGRADES]:
-            store: Store = (
-                self._session.query(Store)
-                .filter_by(name=RSI_SCRAPER_STORE_NAME)
-                .first()
-            )
-            if store is None:
-                self._logger.warning(
-                    f"Store by name [{RSI_SCRAPER_STORE_NAME}] not found."
-                )
-                return []
-            if entity_type == UpdateType.RSI_STANDALONES:
-                return store.standalones
-            else:
-                return store.upgrades
+        elif entity_type == UpdateType.RSI_STANDALONES:
+            return self._query_rsi_standalones().all()
+        elif entity_type == UpdateType.RSI_UPGRADES:
+            return self._query_rsi_upgrades().all()
         elif entity_type == UpdateType.REDDIT_STANDALONES:
-            standalones = (
-                self._session.query(Standalone)
-                .filter(Standalone.store.has(Store.url.like("%reddit.com%")))
-                .all()
-            )
-            return standalones
+            return self._query_reddit_standalones().all()
         elif entity_type == UpdateType.REDDIT_UPGRADES:
-            upgrades = (
-                self._session.query(Upgrade)
-                .filter(Upgrade.store.has(Store.url.like("%reddit.com%")))
-                .all()
-            )
-            return upgrades
+            return self._query_reddit_upgrades().all()
         else:
             raise ValueError(f"Invalid update_type passed: {entity_type}")
 

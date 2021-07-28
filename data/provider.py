@@ -6,8 +6,8 @@ from typing import List, Tuple, Any, Type
 
 from const import (
     SHIP_DATA_EXPIRY,
-    UPGRADE_DATA_EXPIRY,
-    STANDALONE_DATA_EXPIRY,
+    RSI_UPGRADE_DATA_EXPIRY,
+    RSI_STANDALONE_DATA_EXPIRY,
     REDDIT_DATA_EXPIRY,
 )
 from data.scraper.scraper import RSIScraper, RedditScraper
@@ -177,7 +177,7 @@ class OfficialStandaloneDataProvider(DataProvider):
         last_loaded: datetime,
         logger: CustomLogger,
     ):
-        super().__init__(initial_data, last_loaded, STANDALONE_DATA_EXPIRY, logger)
+        super().__init__(initial_data, last_loaded, RSI_STANDALONE_DATA_EXPIRY, logger)
         self.__ship_data_provider = ship_data_provider
         self._scraper = RSIScraper(self._logger)
 
@@ -203,7 +203,7 @@ class OfficialUpgradeDataProvider(DataProvider):
         last_loaded: datetime,
         logger: CustomLogger,
     ):
-        super().__init__(initial_data, last_loaded, UPGRADE_DATA_EXPIRY, logger)
+        super().__init__(initial_data, last_loaded, RSI_UPGRADE_DATA_EXPIRY, logger)
         self.__ship_data_provider = ship_data_provider
         self._scraper = RSIScraper(self._logger)
 

@@ -6,8 +6,8 @@ DATABASE_FILEPATH = "database.db"
 CONFIG_FILEPATH = "config.ini"
 
 SHIP_DATA_EXPIRY = timedelta(days=7)
-STANDALONE_DATA_EXPIRY = timedelta(days=1)
-UPGRADE_DATA_EXPIRY = timedelta(days=1)
+RSI_STANDALONE_DATA_EXPIRY = timedelta(days=1)
+RSI_UPGRADE_DATA_EXPIRY = timedelta(days=1)
 REDDIT_DATA_EXPIRY = timedelta(hours=1)
 
 UPDATE_LOGS_ENTRY_LIMIT = 100
