@@ -10,10 +10,10 @@ from util import CustomLogger
 
 class SCApi:
     """
-    Class to access endpoints exposed by http://starcitizen-api.com
+    Class to access endpoints exposed by https://starcitizen-api.com
     """
 
-    __BASE_URL = "http://api.starcitizen-api.com"
+    __BASE_URL = "https://api.starcitizen-api.com"
 
     def __init__(self, api_key: str, logger: CustomLogger):
         self._api_key = api_key
