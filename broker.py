@@ -3,6 +3,7 @@ import datetime
 from typing import List
 
 from config import ConfigProvider
+from const import RSI_SCRAPER_STORE_URL, RSI_SCRAPER_STORE_NAME
 from data.api import SCApi
 from data.provider import (
     DataProviderManager,
@@ -101,6 +102,10 @@ class SCDataBroker:
         )
         standalones, updated = standalone_data_provider.get_data(force, echo)
         if updated or force:
+            store = self._em.find_store(RSI_SCRAPER_STORE_NAME, RSI_SCRAPER_STORE_URL)
+            for standalone in standalones:
+                standalone.store = store
+                standalone.store_id = store.id
             self._em.update_rsi_standalones(standalones)
 
     def _update_rsi_upgrades(self, force: bool = False, echo: bool = False) -> None:
@@ -109,6 +114,10 @@ class SCDataBroker:
         )
         upgrades, updated = upgrade_data_provider.get_data(force, echo)
         if updated or force:
+            store = self._em.find_store(RSI_SCRAPER_STORE_NAME, RSI_SCRAPER_STORE_URL)
+            for upgrade in upgrades:
+                upgrade.store = store
+                upgrade.store_id = store.id
             self._em.update_rsi_upgrades(upgrades)
 
     def _update_reddit_entries(self, force: bool = False, echo: bool = False) -> None:
@@ -121,13 +130,14 @@ class SCDataBroker:
             standalones = []
             upgrades = []
             for entry in entries:
+                store = self._em.find_store(entry.store_name, entry.store_url)
                 if entry.update_type == UpdateType.REDDIT_STANDALONES:
                     ship_id = self._em.find_ship_id_by_name(entry.ship_name)
                     if ship_id is not None:
                         standalones.append(
                             Standalone(
                                 price_usd=entry.price_usd,
-                                store_name=entry.store_name,
+                                store=store,
                                 ship_id=ship_id,
                             )
                         )
@@ -138,7 +148,7 @@ class SCDataBroker:
                         upgrades.append(
                             Upgrade(
                                 price_usd=entry.price_usd,
-                                store_name=entry.store_name,
+                                store=store,
                                 ship_id_from=ship_id_from,
                                 ship_id_to=ship_id_to,
                             )

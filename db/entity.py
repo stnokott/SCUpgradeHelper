@@ -2,9 +2,19 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import event, Column, ForeignKey, Integer, Float, DateTime, Enum, Text
+from sqlalchemy import (
+    event,
+    Column,
+    ForeignKey,
+    Integer,
+    Float,
+    DateTime,
+    Enum,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declared_attr
 
 Base = declarative_base()
 
@@ -112,13 +122,55 @@ Manufacturer.ships = relationship(
 )
 
 
+class Store(Base):
+    """
+    Entity representing a store where standalones/upgrades can be purchased
+    """
+
+    __tablename__ = "STORES"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(Text, nullable=False)
+    url = Column(Text, nullable=False)
+    standalones = relationship("Standalone", order_by="Standalone.id", viewonly=True)
+    upgrades = relationship("Upgrade", order_by="Upgrade.id", viewonly=True)
+
+    uniq = UniqueConstraint(name, url)
+
+    def __eq__(self, other):
+        return self.name == other.name and self.url == other.url
+
+    def __hash__(self):
+        return hash(
+            (
+                "name",
+                self.name,
+                "url",
+                self.url,
+            )
+        )
+
+    def __repr__(self):
+        return f"<{Store.__name__}>({self.name})"
+
+
 class Purchasable(Base):
     __abstract__ = True
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     loaddate = Column(DateTime)
     price_usd = Column(Float, nullable=False)
-    store_name = Column(Text, nullable=False)
+
+    @declared_attr
+    def store_id(self):
+        return Column(Integer, ForeignKey(Store.id), nullable=False)
+
+    @declared_attr
+    def store(self):
+        return relationship("Store", cascade="merge")
+
+    def __eq__(self, other):
+        return self.price_usd == other.price_usd and self.store_id == other.store_id
 
 
 class Standalone(Purchasable):
@@ -132,11 +184,7 @@ class Standalone(Purchasable):
     ship = relationship("Ship")
 
     def __eq__(self, other):
-        return (
-            self.ship_id == other.ship_id
-            and self.price_usd == other.price_usd
-            and self.store_name == other.store_name
-        )
+        return super().__eq__(other) and self.ship_id == other.ship_id
 
     def __hash__(self):
         return hash(
@@ -145,14 +193,14 @@ class Standalone(Purchasable):
                 self.ship_id,
                 "price_usd",
                 self.price_usd,
-                "store_name",
-                self.store_name,
+                "store_id",
+                self.store_id,
             )
         )
 
     def __repr__(self):
         ship_name = self.ship.name if self.ship is not None else self.ship_id
-        return f"<{Standalone.__name__}>({ship_name}: ${self.price_usd} @ {self.store_name})"
+        return f"<{Standalone.__name__}>({ship_name}: ${self.price_usd} @ {self.store.name})"
 
 
 @event.listens_for(Standalone, "before_insert")
@@ -183,10 +231,9 @@ class Upgrade(Purchasable):
 
     def __eq__(self, other):
         return (
-            self.ship_id_from == other.ship_id_from
+            super().__eq__(other)
+            and self.ship_id_from == other.ship_id_from
             and self.ship_id_to == other.ship_id_to
-            and self.price_usd == other.price_usd
-            and self.store_name == other.store_name
         )
 
     def __hash__(self):
@@ -198,8 +245,8 @@ class Upgrade(Purchasable):
                 self.ship_id_to,
                 "price_usd",
                 self.price_usd,
-                "store_name",
-                self.store_name,
+                "store_id",
+                self.store_id,
             )
         )
 
@@ -212,7 +259,7 @@ class Upgrade(Purchasable):
         )
         return (
             f"<{Upgrade.__name__}>(From [{ship_from_name}] to [{ship_to_name}]: "
-            f"${self.price_usd} @ {self.store_name})"
+            f"${self.price_usd} @ {self.store.name})"
         )
 
 

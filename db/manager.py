@@ -25,6 +25,7 @@ from db.entity import (
     Upgrade,
     Standalone,
     UpdateLog,
+    Store,
 )
 from util import StatusString, CustomLogger
 
@@ -95,6 +96,14 @@ class EntityManager:
         self._logger.info(f"Deleting {deleted_count} stale entries for {update_type}")
         self._session.commit()
 
+    def find_store(self, name: str, url: str) -> Store:
+        store = self._session.query(Store).filter_by(name=name, url=url).first()
+        if store is None:
+            store = Store(name=name, url=url)
+            self._session.add(store)
+            self._session.flush()
+        return store
+
     def _update_entities(
         self,
         entities: List[Union[Manufacturer, Ship, Standalone, Upgrade]],
@@ -107,7 +116,7 @@ class EntityManager:
             return
 
         update_type_name: str = update_type.value
-        status = StatusString(f"PROCESSING {update_type_name.upper()}S")
+        status = StatusString(f"PROCESSING {update_type_name.upper()}")
         self._logger.info(status.get_status_str())
         existing_entities = self._get_entities(update_type)
         entities_set = set(entities)
@@ -144,29 +153,32 @@ class EntityManager:
             return self._session.query(Standalone).all()
         elif entity_type == Upgrade:
             return self._session.query(Upgrade).all()
-        elif entity_type == UpdateType.RSI_STANDALONES:
-            return (
-                self._session.query(Standalone)
-                .filter_by(store_name=RSI_SCRAPER_STORE_NAME)
-                .all()
+        elif entity_type in [UpdateType.RSI_STANDALONES, UpdateType.RSI_UPGRADES]:
+            store: Store = (
+                self._session.query(Store)
+                .filter_by(name=RSI_SCRAPER_STORE_NAME)
+                .first()
             )
-        elif entity_type == UpdateType.RSI_UPGRADES:
-            return (
-                self._session.query(Upgrade)
-                .filter_by(store_name=RSI_SCRAPER_STORE_NAME)
-                .all()
-            )
+            if store is None:
+                self._logger.warning(
+                    f"Store by name [{RSI_SCRAPER_STORE_NAME}] not found."
+                )
+                return []
+            if entity_type == UpdateType.RSI_STANDALONES:
+                return store.standalones
+            else:
+                return store.upgrades
         elif entity_type == UpdateType.REDDIT_STANDALONES:
             standalones = (
                 self._session.query(Standalone)
-                .filter(Standalone.store_name != RSI_SCRAPER_STORE_NAME)
+                .filter(Standalone.store.has(Store.url.like("%reddit.com%")))
                 .all()
             )
             return standalones
         elif entity_type == UpdateType.REDDIT_UPGRADES:
             upgrades = (
                 self._session.query(Upgrade)
-                .filter(Upgrade.store_name != RSI_SCRAPER_STORE_NAME)
+                .filter(Upgrade.store.has(Store.url.like("%reddit.com%")))
                 .all()
             )
             return upgrades

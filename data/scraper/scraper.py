@@ -184,7 +184,6 @@ class RSIScraper:
                 Standalone(
                     ship_id=ship.id,
                     price_usd=new_price,
-                    store_name=RSI_SCRAPER_STORE_NAME,
                 )
             )
         return standalones
@@ -386,7 +385,6 @@ class RSIScraper:
             ship_id_from=int(from_id),
             ship_id_to=int(upgrade_json["id"]),
             price_usd=float(int(cheapest_upgrade["upgradePrice"]) / 100),
-            store_name=RSI_SCRAPER_STORE_NAME,
         )
 
 

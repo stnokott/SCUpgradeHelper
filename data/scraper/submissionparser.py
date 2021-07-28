@@ -23,7 +23,7 @@ class ParsedRedditSubmissionEntry:
 
     def __init__(self, *args, **kwargs):
         """
-        ParsedSubmissionProxy(entity_type, price_usd[, ship_name = None][, ship_name_from = None, ship_name_to = None]
+        ParsedSubmissionProxy(entity_type, price_usd, store_name, store_url[, ship_name = None][, ship_name_from = None, ship_name_to = None]
         """
         self.update_type: UpdateType = args[0]
         # remove non-numeric characters from price string
@@ -33,6 +33,7 @@ class ParsedRedditSubmissionEntry:
             raise NotParsableException(f"Price [{args[1]}] invalid")
         self.price_usd: float = float(fixed_price_string)
         self.store_name: str = args[2]
+        self.store_url: str = args[3]
         self.ship_name: Optional[str] = kwargs.get("ship_name") or None
         self.ship_name_from: Optional[str] = kwargs.get("ship_name_from") or None
         self.ship_name_to: Optional[str] = kwargs.get("ship_name_to") or None
@@ -157,6 +158,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
                                     update_type,
                                     price_usd,
                                     store_name,
+                                    submission.shortlink,
                                     ship_name=row[table_metadata.col_index_ship_name],
                                 )
                             )
@@ -166,6 +168,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
                                     update_type,
                                     price_usd,
                                     store_name,
+                                    submission.shortlink,
                                     ship_name_from=row[
                                         table_metadata.col_index_ship_name_from
                                     ],
@@ -181,7 +184,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
                         self._logger.debug(f"Entry ignored, reason: {e}")
             else:
                 self._logger.debug(
-                    f"Table ignored: {'|'.join(table_header)} ({submission.permalink})"
+                    f"Table ignored: {'|'.join(table_header)} ({submission.shortlink})"
                 )
         return parsed_submissions
 

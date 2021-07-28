@@ -13,6 +13,7 @@ REDDIT_DATA_EXPIRY = timedelta(hours=1)
 UPDATE_LOGS_ENTRY_LIMIT = 100
 
 RSI_SCRAPER_STORE_NAME = "RSI"
+RSI_SCRAPER_STORE_URL = "https://robertsspaceindustries.com/pledge"
 
 REDDIT_PARSE_EXCLUDE_KEYWORDS = [
     "Upgrade",
