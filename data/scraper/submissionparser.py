@@ -7,7 +7,7 @@ from typing import Optional, List
 from praw.reddit import Submission
 
 from const import REDDIT_PARSE_EXCLUDE_KEYWORDS
-from db.entity import EntityType
+from db.entity import UpdateType
 from util import CustomLogger
 
 
@@ -25,7 +25,7 @@ class ParsedRedditSubmissionEntry:
         """
         ParsedSubmissionProxy(entity_type, price_usd[, ship_name = None][, ship_name_from = None, ship_name_to = None]
         """
-        self.entity_type: EntityType = args[0]
+        self.update_type: UpdateType = args[0]
         # remove non-numeric characters from price string
         numeric_filter = filter(str.isdigit, args[1])
         fixed_price_string = "".join(numeric_filter)
@@ -41,13 +41,15 @@ class ParsedRedditSubmissionEntry:
                 key.lower() in name.lower() for key in REDDIT_PARSE_EXCLUDE_KEYWORDS
             ):
                 raise NotParsableException(f"[{name}] contains exclude keyword")
-        if self.entity_type == EntityType.UPGRADES and (
+        if self.update_type == UpdateType.REDDIT_UPGRADES and (
             self.ship_name_from is None or self.ship_name_to is None
         ):
             raise ValueError(
                 f"Trying to instantiate {self.__class__} of type UPGRADE without ship name from/to!"
             )
-        elif self.entity_type == EntityType.STANDALONES and self.ship_name is None:
+        elif (
+            self.update_type == UpdateType.REDDIT_STANDALONES and self.ship_name is None
+        ):
             raise ValueError(
                 f"Trying to instantiate {self.__class__} of type STANDALONE without ship name!"
             )
@@ -74,7 +76,7 @@ class _HTMLTableParser(_GenericSubmissionParser):
 
         def __init__(self, header: List[str], logger: CustomLogger):
             self.valid = False
-            self.type: Optional[EntityType] = None
+            self.type: Optional[UpdateType] = None
             self.col_index_price: Optional[int] = None
             self.col_index_ship_name_from: Optional[int] = None
             self.col_index_ship_name_to: Optional[int] = None
@@ -114,9 +116,9 @@ class _HTMLTableParser(_GenericSubmissionParser):
                 self.col_index_ship_name_from is not None
                 and self.col_index_ship_name_to is not None
             ):
-                self.type = EntityType.UPGRADES
+                self.type = UpdateType.REDDIT_UPGRADES
             elif self.col_index_ship_name is not None:
-                self.type = EntityType.STANDALONES
+                self.type = UpdateType.REDDIT_STANDALONES
 
             if self.type is None or self.col_index_price is None:
                 logger.debug(f"Could not completely map columns {'|'.join(header)}")
@@ -143,25 +145,25 @@ class _HTMLTableParser(_GenericSubmissionParser):
                     table_content.append([ele for ele in cols if ele])
 
                 for row in table_content:
-                    entity_type = table_metadata.type
+                    update_type = table_metadata.type
                     try:
                         price_usd = row[table_metadata.col_index_price]
                         store_name = "Reddit"
                         # TODO: parse store name
                         # TODO: parse manufacturer name
-                        if entity_type == EntityType.STANDALONES:
+                        if update_type == UpdateType.REDDIT_STANDALONES:
                             parsed_submissions.append(
                                 ParsedRedditSubmissionEntry(
-                                    entity_type,
+                                    update_type,
                                     price_usd,
                                     store_name,
                                     ship_name=row[table_metadata.col_index_ship_name],
                                 )
                             )
-                        elif entity_type == EntityType.UPGRADES:
+                        elif update_type == UpdateType.REDDIT_UPGRADES:
                             parsed_submissions.append(
                                 ParsedRedditSubmissionEntry(
-                                    entity_type,
+                                    update_type,
                                     price_usd,
                                     store_name,
                                     ship_name_from=row[

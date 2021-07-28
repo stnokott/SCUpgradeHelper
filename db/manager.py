@@ -4,7 +4,7 @@ from typing import List, Optional, Type, Union
 
 from fuzzywuzzy import process, fuzz
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, configure_mappers, aliased
+from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.expression import func
 
 from const import (
@@ -67,38 +67,38 @@ class EntityManager:
             ).delete()
         self._session.commit()
 
-    def _remove_stale_entities(
-        self, entity_type: Union[Ship, Standalone, Upgrade]
-    ) -> None:
-        # TODO: find solution to differentiate between official and Reddit entries
+    def _remove_stale_entities(self, update_type: UpdateType) -> None:
+        # TODO: differentiate between official and Reddit entries
         return
         now = datetime.now()
-        if entity_type == Ship:
+        if update_type == Ship:
             query = self._session.query(Ship).where(
                 now - Ship.loaddate > SHIP_DATA_EXPIRY
             )
-        elif entity_type == Standalone:
+        elif update_type == Standalone:
             query = self._session.query(Standalone).where(
                 now - Standalone.loaddate > STANDALONE_DATA_EXPIRY
             )
-        elif entity_type == Upgrade:
+        elif update_type == Upgrade:
             query = self._session.query(Upgrade).where(
                 now - Upgrade.loaddate > UPGRADE_DATA_EXPIRY
             )
         else:
             self._logger.debug(
-                f"Ignoring request to remove stale entities for type {entity_type}"
+                f"Ignoring request to remove stale entities for type {update_type}"
             )
             return
         deleted_count = 0
         for item in query:
             deleted_count += 1
             self._session.delete(item)
-        self._logger.info(f"Deleting {deleted_count} stale entries for {entity_type}")
+        self._logger.info(f"Deleting {deleted_count} stale entries for {update_type}")
         self._session.commit()
 
     def _update_entities(
-        self, entities: List[Union[Manufacturer, Ship, Standalone, Upgrade]]
+        self,
+        entities: List[Union[Manufacturer, Ship, Standalone, Upgrade]],
+        update_type: UpdateType,
     ) -> None:
         if len(entities) == 0:
             self._logger.warning(
@@ -106,19 +106,14 @@ class EntityManager:
             )
             return
 
-        entity_types = set([entity.__class__ for entity in entities])
-        if len(entity_types) != 1:
-            raise ValueError(f"Passed entities of more than one type: ({entity_types})")
-
-        entity_type = entity_types.pop()
-        entity_type_name = entity_type.__name__
-        status = StatusString(f"PROCESSING {entity_type_name.upper()}S")
+        update_type_name: str = update_type.value
+        status = StatusString(f"PROCESSING {update_type_name.upper()}S")
         self._logger.info(status.get_status_str())
-        existing_entities = self._get_entities(entity_type)
+        existing_entities = self._get_entities(update_type)
         entities_set = set(entities)
 
         # delete invalid entities first
-        self._remove_stale_entities(entity_type)
+        self._remove_stale_entities(update_type)
 
         # add new entities
         new_count = 0
@@ -129,11 +124,11 @@ class EntityManager:
                 new_count += 1
         if new_count > 0:
             self._logger.success(
-                f">>> Added {new_count} new {entity_type_name}(s) to database.",
+                f">>> Added {new_count} new {update_type_name}(s) to database.",
                 CustomLogger.LEVEL_INFO,
             )
         else:
-            self._logger.info(f">>> No new {entity_type_name}(s) detected.")
+            self._logger.info(f">>> No new {update_type_name}(s) detected.")
 
         self._session.commit()
         self._logger.info(status.get_status_done_str())
@@ -161,18 +156,20 @@ class EntityManager:
                 .filter_by(store_name=RSI_SCRAPER_STORE_NAME)
                 .all()
             )
-        elif entity_type == UpdateType.REDDIT_ENTITIES:
+        elif entity_type == UpdateType.REDDIT_STANDALONES:
             standalones = (
                 self._session.query(Standalone)
                 .filter(Standalone.store_name != RSI_SCRAPER_STORE_NAME)
                 .all()
             )
+            return standalones
+        elif entity_type == UpdateType.REDDIT_UPGRADES:
             upgrades = (
                 self._session.query(Upgrade)
                 .filter(Upgrade.store_name != RSI_SCRAPER_STORE_NAME)
                 .all()
             )
-            return standalones + upgrades
+            return upgrades
         else:
             raise ValueError(f"Invalid update_type passed: {entity_type}")
 
@@ -182,7 +179,8 @@ class EntityManager:
         Args:
             manufacturers: list of manufacturers to process
         """
-        self._update_entities(manufacturers)
+        self._update_entities(manufacturers, UpdateType.MANUFACTURERS)
+        self._log_update(UpdateType.MANUFACTURERS)
 
     def update_ships(self, ships: List[Ship]) -> None:
         """
@@ -190,25 +188,46 @@ class EntityManager:
         Args:
             ships: list of ships to process
         """
-        self._update_entities(ships)
+        self._update_entities(ships, UpdateType.SHIPS)
+        self._log_update(UpdateType.SHIPS)
 
-    def update_standalones(self, standalones: List[Standalone]):
+    def update_rsi_standalones(self, standalones: List[Standalone]):
         """
         Inserts standalones into database, updates if existing
         Args:
             standalones: list of standalones to process
         """
-        self._update_entities(standalones)
+        self._update_entities(standalones, UpdateType.RSI_STANDALONES)
+        self._log_update(UpdateType.RSI_STANDALONES)
 
-    def update_upgrades(self, upgrades: List[Upgrade]) -> None:
+    def update_rsi_upgrades(self, upgrades: List[Upgrade]) -> None:
         """
         Inserts upgrades into database, updates if existing
         Args:
             upgrades: list of upgrades to process
         """
-        self._update_entities(upgrades)
+        self._update_entities(upgrades, UpdateType.RSI_UPGRADES)
+        self._log_update(UpdateType.RSI_UPGRADES)
 
-    def log_update(self, update_type: UpdateType) -> None:
+    def update_reddit_standalones(self, standalones: List[Standalone]):
+        """
+        Inserts standalones into database, updates if existing
+        Args:
+            standalones: list of standalones to process
+        """
+        self._update_entities(standalones, UpdateType.REDDIT_STANDALONES)
+        self._log_update(UpdateType.REDDIT_STANDALONES)
+
+    def update_reddit_upgrades(self, upgrades: List[Upgrade]) -> None:
+        """
+        Inserts upgrades into database, updates if existing
+        Args:
+            upgrades: list of upgrades to process
+        """
+        self._update_entities(upgrades, UpdateType.REDDIT_UPGRADES)
+        self._log_update(UpdateType.REDDIT_UPGRADES)
+
+    def _log_update(self, update_type: UpdateType) -> None:
         """
         Insert entry in log table
         Args:
@@ -295,12 +314,19 @@ class EntityManager:
         """
         return self._get_entities(UpdateType.RSI_UPGRADES)
 
-    def get_reddit_entities(self) -> List[Upgrade]:
+    def get_reddit_standalones(self) -> List[Standalone]:
         """
         Returns:
             All Reddit RSI upgrade entities in database
         """
-        return self._get_entities(UpdateType.REDDIT_ENTITIES)
+        return self._get_entities(UpdateType.REDDIT_STANDALONES)
+
+    def get_reddit_upgrades(self) -> List[Upgrade]:
+        """
+        Returns:
+            All Reddit RSI upgrade entities in database
+        """
+        return self._get_entities(UpdateType.REDDIT_UPGRADES)
 
     def get_loaddate(self, update_type: UpdateType) -> Optional[datetime]:
         """

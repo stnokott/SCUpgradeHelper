@@ -8,28 +8,18 @@ from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
-# TODO: EntityType/UpdateType: prüfen ob wirklich gebraucht
-
-
-class EntityType(enum.Enum):
-    """
-    Enum for defining types of entities
-    """
-
-    SHIPS = "Ships"
-    STANDALONES = "Standalones"
-    UPGRADES = "Upgrades"
-
 
 class UpdateType(enum.Enum):
     """
     Enum for specifying type of data update (e.g. when updating official standalone ships, use RSI_STANDALONES)
     """
+
     MANUFACTURERS = "Manufacturers"
     SHIPS = "Ships"
     RSI_STANDALONES = "Official Standalones"
     RSI_UPGRADES = "Official Upgrades"
-    REDDIT_ENTITIES = "Reddit entities"
+    REDDIT_STANDALONES = "Reddit standalones"
+    REDDIT_UPGRADES = "Reddit upgrades"
 
 
 class Manufacturer(Base):
@@ -193,10 +183,10 @@ class Upgrade(Purchasable):
 
     def __eq__(self, other):
         return (
-                self.ship_id_from == other.ship_id_from
-                and self.ship_id_to == other.ship_id_to
-                and self.price_usd == other.price_usd
-                and self.store_name == other.store_name
+            self.ship_id_from == other.ship_id_from
+            and self.ship_id_to == other.ship_id_to
+            and self.price_usd == other.price_usd
+            and self.store_name == other.store_name
         )
 
     def __hash__(self):
@@ -251,22 +241,10 @@ class UpdateLog(Base):
     loaddate = Column(DateTime)
 
     def __eq__(self, other):
-        return (
-                self.update_type == other.update_type
-                and self.loaddate == other.loaddate
-        )
+        return self.update_type == other.update_type and self.loaddate == other.loaddate
 
     def __hash__(self):
-        return hash(
-            (
-                "data_type",
-                self.update_type,
-                "loaddate",
-                self.loaddate
-            )
-        )
+        return hash(("data_type", self.update_type, "loaddate", self.loaddate))
 
     def __repr__(self):
-        return (
-            f"<{UpdateLog.__name__}>({self.update_type} updated at {self.loaddate})"
-        )
+        return f"<{UpdateLog.__name__}>({self.update_type} updated at {self.loaddate})"

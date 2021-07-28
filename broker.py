@@ -1,4 +1,5 @@
 """Contains broker classes for communicating data between APIs and the database"""
+import datetime
 from typing import List
 
 from config import ConfigProvider
@@ -12,7 +13,7 @@ from data.provider import (
     RedditDataProvider,
 )
 from data.scraper.submissionparser import ParsedRedditSubmissionEntry
-from db.entity import Ship, Upgrade, UpdateType, EntityType, Standalone
+from db.entity import Ship, Upgrade, UpdateType, Standalone
 from db.manager import EntityManager
 from util import CustomLogger
 
@@ -59,8 +60,13 @@ class SCDataBroker:
             RedditDataProvider(
                 config.reddit_client_id,
                 config.reddit_client_secret,
-                self._em.get_reddit_entities(),
-                self._em.get_loaddate(UpdateType.REDDIT_ENTITIES),
+                self._em.get_reddit_standalones() + self._em.get_reddit_upgrades(),
+                min(
+                    self._em.get_loaddate(UpdateType.REDDIT_STANDALONES)
+                    or datetime.datetime(1900, 1, 1),
+                    self._em.get_loaddate(UpdateType.REDDIT_UPGRADES)
+                    or datetime.datetime(1900, 1, 1),
+                ),
                 logger,
             ),
         )
@@ -85,7 +91,6 @@ class SCDataBroker:
             DataProviderType.SHIPS
         )
         ships, updated = ship_data_provider.get_data(force, echo)
-        self._log_update(UpdateType.SHIPS)
         if updated or force:
             self._em.update_manufacturers([ship.manufacturer for ship in ships])
             self._em.update_ships(ships)
@@ -95,18 +100,16 @@ class SCDataBroker:
             DataProviderType.RSI_STANDALONES
         )
         standalones, updated = standalone_data_provider.get_data(force, echo)
-        self._log_update(UpdateType.RSI_STANDALONES)
         if updated or force:
-            self._em.update_standalones(standalones)
+            self._em.update_rsi_standalones(standalones)
 
     def _update_rsi_upgrades(self, force: bool = False, echo: bool = False) -> None:
         upgrade_data_provider = self._data_provider_manager.get_data_provider(
             DataProviderType.RSI_UPGRADES
         )
         upgrades, updated = upgrade_data_provider.get_data(force, echo)
-        self._log_update(UpdateType.RSI_UPGRADES)
         if updated or force:
-            self._em.update_upgrades(upgrades)
+            self._em.update_rsi_upgrades(upgrades)
 
     def _update_reddit_entries(self, force: bool = False, echo: bool = False) -> None:
         reddit_data_provider = self._data_provider_manager.get_data_provider(
@@ -114,12 +117,11 @@ class SCDataBroker:
         )
         entries: List[ParsedRedditSubmissionEntry]
         entries, updated = reddit_data_provider.get_data(force, echo)
-        self._log_update(UpdateType.REDDIT_ENTITIES)
         if updated or force:
             standalones = []
             upgrades = []
             for entry in entries:
-                if entry.entity_type == EntityType.STANDALONES:
+                if entry.update_type == UpdateType.REDDIT_STANDALONES:
                     ship_id = self._em.find_ship_id_by_name(entry.ship_name)
                     if ship_id is not None:
                         standalones.append(
@@ -129,7 +131,7 @@ class SCDataBroker:
                                 ship_id=ship_id,
                             )
                         )
-                elif entry.entity_type == EntityType.UPGRADES:
+                elif entry.update_type == UpdateType.REDDIT_UPGRADES:
                     ship_id_from = self._em.find_ship_id_by_name(entry.ship_name_from)
                     ship_id_to = self._em.find_ship_id_by_name(entry.ship_name_to)
                     if ship_id_from is not None and ship_id_to is not None:
@@ -144,11 +146,8 @@ class SCDataBroker:
             self._logger.info(
                 f"{len(entries) - (len(standalones) + len(upgrades))} Reddit entries could not be resolved."
             )
-            self._em.update_standalones(standalones)
-            self._em.update_upgrades(upgrades)
-
-    def _log_update(self, update_type: UpdateType) -> None:
-        self._em.log_update(update_type)
+            self._em.update_reddit_standalones(standalones)
+            self._em.update_reddit_upgrades(upgrades)
 
     def get_ships(self, force_update: bool = False) -> List[Ship]:
         """
