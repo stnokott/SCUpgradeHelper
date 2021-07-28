@@ -32,14 +32,23 @@ class UpdateType(enum.Enum):
     REDDIT_UPGRADES = "Reddit upgrades"
 
 
-class Manufacturer(Base):
+class BaseMixin(object):
+    @declared_attr
+    def __tablename__(self):
+        return f"{self.__name__.upper()}S"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+
+class DeltaProcessedMixin(object):
+    loaddate = Column(DateTime)
+
+
+class Manufacturer(BaseMixin, Base):
     """
     Class representing a ship manufacturer
     """
 
-    __tablename__ = "MANUFACTURERS"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(Text, unique=True, nullable=False)
     code = Column(Text, unique=True)
 
@@ -66,16 +75,11 @@ class Manufacturer(Base):
         return f"<{Manufacturer.__name__}>({self.code}/{self.name})"
 
 
-class Ship(Base):
+class Ship(BaseMixin, DeltaProcessedMixin, Base):
     """
     Class representing a purchasable ship or vehicle
     """
 
-    __tablename__ = "SHIPS"
-    __searchable__ = ["name"]
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    loaddate = Column(DateTime)
     name = Column(Text, unique=True, nullable=False)
     manufacturer_id = Column(Integer, ForeignKey(Manufacturer.id), nullable=False)
 
@@ -122,14 +126,11 @@ Manufacturer.ships = relationship(
 )
 
 
-class Store(Base):
+class Store(BaseMixin, Base):
     """
     Entity representing a store where standalones/upgrades can be purchased
     """
 
-    __tablename__ = "STORES"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False)
     url = Column(Text, nullable=False)
     standalones = relationship("Standalone", order_by="Standalone.id", viewonly=True)
@@ -154,11 +155,9 @@ class Store(Base):
         return f"<{Store.__name__}>({self.name})"
 
 
-class Purchasable(Base):
+class Purchasable(BaseMixin, DeltaProcessedMixin, Base):
     __abstract__ = True
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    loaddate = Column(DateTime)
     price_usd = Column(Float, nullable=False)
 
     @declared_attr
@@ -177,8 +176,6 @@ class Standalone(Purchasable):
     """
     Entity representing a purchase that gives you a ship directly
     """
-
-    __tablename__ = "STANDALONE"
 
     ship_id = Column(Integer, ForeignKey(Ship.id), nullable=False)
     ship = relationship("Ship")
@@ -220,8 +217,6 @@ class Upgrade(Purchasable):
     """
     Entity representing a ship upgrade
     """
-
-    __tablename__ = "UPGRADES"
 
     ship_id_from = Column(Integer, ForeignKey(Ship.id), nullable=False)
     ship_id_to = Column(Integer, ForeignKey(Ship.id), nullable=False)
@@ -276,16 +271,12 @@ def update_upgrade_loaddate(mapper, connection, target: Upgrade):
     target.loaddate = datetime.now()
 
 
-class UpdateLog(Base):
+class UpdateLog(BaseMixin, DeltaProcessedMixin, Base):
     """
     Entity representing an entry in the log table
     """
 
-    __tablename__ = "UPDATE_LOGS"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
     update_type = Column(Enum(UpdateType))
-    loaddate = Column(DateTime)
 
     def __eq__(self, other):
         return self.update_type == other.update_type and self.loaddate == other.loaddate
