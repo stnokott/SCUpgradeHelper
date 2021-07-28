@@ -48,7 +48,10 @@ def format_timedelta(delta: timedelta) -> str:
     output_str = ""
     total_seconds = delta.total_seconds()
     if delta.days > 0:
-        output_str += f"{delta.days} days, "
+        if delta.days > 2:
+            return f"{delta.days} days"
+        else:
+            output_str += f"{delta.days} days, "
     total_seconds -= delta.days * 86400
     hours = str(round(total_seconds // 3600)).zfill(2)
     minutes = str(round((total_seconds % 3600) // 60)).zfill(2)
