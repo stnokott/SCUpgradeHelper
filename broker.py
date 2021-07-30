@@ -3,7 +3,7 @@ import datetime
 from typing import List
 
 from config import ConfigProvider
-from const import RSI_SCRAPER_STORE_URL, RSI_SCRAPER_STORE_NAME
+from const import RSI_SCRAPER_STORE_URL, RSI_SCRAPER_STORE_OWNER
 from data.api import SCApi
 from data.provider import (
     DataProviderManager,
@@ -102,7 +102,7 @@ class SCDataBroker:
         )
         standalones, updated = standalone_data_provider.get_data(force, echo)
         if updated or force:
-            store = self._em.find_store(RSI_SCRAPER_STORE_NAME, RSI_SCRAPER_STORE_URL)
+            store = self._em.find_store(RSI_SCRAPER_STORE_OWNER, RSI_SCRAPER_STORE_URL)
             for standalone in standalones:
                 standalone.store = store
                 standalone.store_id = store.id
@@ -114,7 +114,7 @@ class SCDataBroker:
         )
         upgrades, updated = upgrade_data_provider.get_data(force, echo)
         if updated or force:
-            store = self._em.find_store(RSI_SCRAPER_STORE_NAME, RSI_SCRAPER_STORE_URL)
+            store = self._em.find_store(RSI_SCRAPER_STORE_OWNER, RSI_SCRAPER_STORE_URL)
             for upgrade in upgrades:
                 upgrade.store = store
                 upgrade.store_id = store.id
@@ -130,7 +130,7 @@ class SCDataBroker:
             standalones = []
             upgrades = []
             for entry in entries:
-                store = self._em.find_store(entry.store_name, entry.store_url)
+                store = self._em.find_store(entry.store_owner, entry.store_url)
                 if entry.update_type == UpdateType.REDDIT_STANDALONES:
                     ship_id = self._em.find_ship_id_by_name(entry.ship_name)
                     if ship_id is not None:

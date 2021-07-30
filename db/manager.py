@@ -3,14 +3,14 @@ from datetime import datetime
 from typing import List, Optional, Type, Union
 
 from fuzzywuzzy import process, fuzz
-from sqlalchemy import create_engine, DateTime
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, configure_mappers, Query
-from sqlalchemy.sql.expression import func, or_, cast
+from sqlalchemy.sql.expression import func, or_
 
 from const import (
     DATABASE_FILEPATH,
     UPDATE_LOGS_ENTRY_LIMIT,
-    RSI_SCRAPER_STORE_NAME,
+    RSI_SCRAPER_STORE_OWNER,
     SHIP_DATA_EXPIRY,
     RSI_STANDALONE_DATA_EXPIRY,
     RSI_UPGRADE_DATA_EXPIRY,
@@ -71,12 +71,12 @@ class EntityManager:
 
     def _query_rsi_standalones(self) -> Query:
         return self._session.query(Standalone).filter(
-            Standalone.store.has(Store.name == RSI_SCRAPER_STORE_NAME)
+            Standalone.store.has(Store.username == RSI_SCRAPER_STORE_OWNER)
         )
 
     def _query_rsi_upgrades(self) -> Query:
         return self._session.query(Upgrade).filter(
-            Upgrade.store.has(Store.name == RSI_SCRAPER_STORE_NAME)
+            Upgrade.store.has(Store.username == RSI_SCRAPER_STORE_OWNER)
         )
 
     def _query_reddit_standalones(self) -> Query:
@@ -141,12 +141,22 @@ class EntityManager:
         self._logger.info(f"Deleting {len(deletion)} stale entries for {update_type}")
         self._session.commit()
 
-    def find_store(self, name: str, url: str) -> Store:
-        store = self._session.query(Store).filter_by(name=name, url=url).first()
+    def find_store(self, username: str, url: str) -> Store:
+        """
+        Find store by username and URL. Create one if not found.
+        :param username: username of store owner
+        :type username: string
+        :param url: Reddit URL of store
+        :type url: string
+        :return: Store instance
+        :rtype: Store
+        """
+        store = self._session.query(Store).filter_by(username=username, url=url).first()
         if store is None:
-            store = Store(name=name, url=url)
+            store = Store(username=username, url=url)
             self._session.add(store)
             self._session.flush()
+            self._logger.debug(f"Created new store {store}.")
         return store
 
     def _update_entities(

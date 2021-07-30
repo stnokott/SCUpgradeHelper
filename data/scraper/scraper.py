@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 from praw.models import Submission
 from requests import Session
 
-from const import RSI_SCRAPER_STORE_NAME
+from const import RSI_SCRAPER_STORE_OWNER
 from data.scraper.submissionparser import (
     SubmissionParsingSuite,
     ParsedRedditSubmissionEntry,
@@ -129,7 +129,7 @@ class RSIScraper:
                     CustomLogger.LEVEL_WARN,
                 )
         self._logger.success(
-            f">>> {len(ships)} ships retrieved from {RSI_SCRAPER_STORE_NAME}.",
+            f">>> {len(ships)} ships retrieved from {RSI_SCRAPER_STORE_OWNER}.",
             CustomLogger.LEVEL_WARN,
         )
         self._logger.header(

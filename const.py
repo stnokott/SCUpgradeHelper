@@ -12,7 +12,7 @@ REDDIT_DATA_EXPIRY = timedelta(hours=1)
 
 UPDATE_LOGS_ENTRY_LIMIT = 100
 
-RSI_SCRAPER_STORE_NAME = "RSI"
+RSI_SCRAPER_STORE_OWNER = "RobertsSpaceIndustries"
 RSI_SCRAPER_STORE_URL = "https://robertsspaceindustries.com/pledge"
 
 REDDIT_PARSE_EXCLUDE_KEYWORDS = [
@@ -62,7 +62,9 @@ FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE = 90
 
 _FUZZY_SEARCH_MIN_SCORE_BASE = 65  # base of min score, does not increase, only decrease
 _FUZZY_SEARCH_MIN_SCORE_MAX_OFFSET = 10  # max amount to decrease min score by
-_FUZZY_SEARCH_LENGTH_OFFSET_FACTOR = 0.3  # scales query length to min score, lower values cause higher offsets for shorter queries
+"""scales query length to min score,
+lower values cause higher offsets for shorter queries"""
+_FUZZY_SEARCH_LENGTH_OFFSET_FACTOR = 0.3
 
 
 def fuzzy_search_min_score(length: int) -> int:

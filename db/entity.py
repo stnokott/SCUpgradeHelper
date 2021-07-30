@@ -131,28 +131,28 @@ class Store(BaseMixin, Base):
     Entity representing a store where standalones/upgrades can be purchased
     """
 
-    name = Column(Text, nullable=False)
+    username = Column(Text, nullable=False)
     url = Column(Text, nullable=False)
     standalones = relationship("Standalone", order_by="Standalone.id", viewonly=True)
     upgrades = relationship("Upgrade", order_by="Upgrade.id", viewonly=True)
 
-    uniq = UniqueConstraint(name, url)
+    uniq = UniqueConstraint(username, url)
 
     def __eq__(self, other):
-        return self.name == other.name and self.url == other.url
+        return self.username == other.username and self.url == other.url
 
     def __hash__(self):
         return hash(
             (
-                "name",
-                self.name,
+                "username",
+                self.username,
                 "url",
                 self.url,
             )
         )
 
     def __repr__(self):
-        return f"<{Store.__name__}>({self.name})"
+        return f"<{Store.__name__}>({self.username})"
 
 
 class Purchasable(BaseMixin, DeltaProcessedMixin, Base):
@@ -197,7 +197,7 @@ class Standalone(Purchasable):
 
     def __repr__(self):
         ship_name = self.ship.name if self.ship is not None else self.ship_id
-        return f"<{Standalone.__name__}>({ship_name}: ${self.price_usd} @ {self.store.name})"
+        return f"<{Standalone.__name__}>({ship_name}: ${self.price_usd})"
 
 
 @event.listens_for(Standalone, "before_insert")
@@ -252,10 +252,7 @@ class Upgrade(Purchasable):
         ship_to_name = (
             self.ship_to.name if self.ship_to is not None else self.ship_id_to
         )
-        return (
-            f"<{Upgrade.__name__}>(From [{ship_from_name}] to [{ship_to_name}]: "
-            f"${self.price_usd} @ {self.store.name})"
-        )
+        return f"<{Upgrade.__name__}>(From [{ship_from_name}] to [{ship_to_name}]: ${self.price_usd})"
 
 
 @event.listens_for(Upgrade, "before_insert")
