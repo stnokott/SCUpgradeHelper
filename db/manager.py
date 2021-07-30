@@ -203,12 +203,12 @@ class EntityManager:
         self,
         entities: List[Union[Manufacturer, Ship, Standalone, Upgrade]],
         update_type: UpdateType,
-    ) -> None:
+    ) -> int:
         if len(entities) == 0:
             self._logger.warning(
                 f">>> No entities passed to {self._update_entities.__name__}."
             )
-            return
+            return 0
 
         update_type_name: str = update_type.value
         self._logger.header_start(
@@ -226,16 +226,16 @@ class EntityManager:
         ]
         cleaned_count = len(entities_set) - len(cleaned_entities)
 
-        # add new entities
-        new_count = 0
+        # add or merge entities
+        total_count = 0
         for entity in cleaned_entities:
             if entity not in existing_entities:
                 self._session.merge(entity)
-                self._logger.debug(f">>> Adding {entity}.")
-                new_count += 1
-        if new_count > 0:
+                self._logger.debug(f">>> Adding/updating {entity}.")
+                total_count += 1
+        if total_count > 0:
             self._logger.success(
-                f">>> Added {new_count} new {update_type_name}(s) to database.",
+                f">>> Added or updated {total_count} {update_type_name}(s).",
                 CustomLogger.LEVEL_INFO,
             )
         else:
@@ -248,6 +248,7 @@ class EntityManager:
 
         self._session.commit()
         self._logger.header_end(CustomLogger.LEVEL_INFO)
+        return total_count
 
     def _get_entities(
         self, entity_type: Union[UpdateType, Type[Base]]
@@ -271,59 +272,67 @@ class EntityManager:
         else:
             raise ValueError(f"Invalid update_type passed: {entity_type}")
 
-    def update_manufacturers(self, manufacturers: List[Manufacturer]) -> None:
+    def update_manufacturers(self, manufacturers: List[Manufacturer]) -> int:
         """
         Inserts manufacturers into database, updates if existing
         Args:
             manufacturers: list of manufacturers to process
         """
-        self._update_entities(manufacturers, UpdateType.MANUFACTURERS)
+        updated_count = self._update_entities(manufacturers, UpdateType.MANUFACTURERS)
         self._log_update(UpdateType.MANUFACTURERS)
+        return updated_count
 
-    def update_ships(self, ships: List[Ship]) -> None:
+    def update_ships(self, ships: List[Ship]) -> int:
         """
         Inserts ships into database, updates if existing
         Args:
             ships: list of ships to process
         """
-        self._update_entities(ships, UpdateType.SHIPS)
+        updated_count = self._update_entities(ships, UpdateType.SHIPS)
         self._log_update(UpdateType.SHIPS)
+        return updated_count
 
-    def update_rsi_standalones(self, standalones: List[Standalone]):
+    def update_rsi_standalones(self, standalones: List[Standalone]) -> int:
         """
         Inserts standalones into database, updates if existing
         Args:
             standalones: list of standalones to process
         """
-        self._update_entities(standalones, UpdateType.RSI_STANDALONES)
+        updated_count = self._update_entities(standalones, UpdateType.RSI_STANDALONES)
         self._log_update(UpdateType.RSI_STANDALONES)
+        return updated_count
 
-    def update_rsi_upgrades(self, upgrades: List[Upgrade]) -> None:
+    def update_rsi_upgrades(self, upgrades: List[Upgrade]) -> int:
         """
         Inserts upgrades into database, updates if existing
         Args:
             upgrades: list of upgrades to process
         """
-        self._update_entities(upgrades, UpdateType.RSI_UPGRADES)
+        updated_count = self._update_entities(upgrades, UpdateType.RSI_UPGRADES)
         self._log_update(UpdateType.RSI_UPGRADES)
+        return updated_count
 
-    def update_reddit_standalones(self, standalones: List[Standalone]):
+    def update_reddit_standalones(self, standalones: List[Standalone]) -> int:
         """
         Inserts standalones into database, updates if existing
         Args:
             standalones: list of standalones to process
         """
-        self._update_entities(standalones, UpdateType.REDDIT_STANDALONES)
+        updated_count = self._update_entities(
+            standalones, UpdateType.REDDIT_STANDALONES
+        )
         self._log_update(UpdateType.REDDIT_STANDALONES)
+        return updated_count
 
-    def update_reddit_upgrades(self, upgrades: List[Upgrade]) -> None:
+    def update_reddit_upgrades(self, upgrades: List[Upgrade]) -> int:
         """
         Inserts upgrades into database, updates if existing
         Args:
             upgrades: list of upgrades to process
         """
-        self._update_entities(upgrades, UpdateType.REDDIT_UPGRADES)
+        updated_count = self._update_entities(upgrades, UpdateType.REDDIT_UPGRADES)
         self._log_update(UpdateType.REDDIT_UPGRADES)
+        return updated_count
 
     def _log_update(self, update_type: UpdateType) -> None:
         """

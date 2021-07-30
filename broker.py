@@ -126,7 +126,8 @@ class SCDataBroker:
         )
         entries: List[ParsedRedditSubmissionEntry]
         entries, updated = reddit_data_provider.get_data(force, echo)
-        need_review_count = 0
+        need_review_count_standalones = 0
+        need_review_count_upgrades = 0
         if updated or force:
             standalones = []
             upgrades = []
@@ -138,7 +139,7 @@ class SCDataBroker:
                     ) or (None, None)
                     if ship_id is not None:
                         if needs_review:
-                            need_review_count += 1
+                            need_review_count_standalones += 1
                         standalones.append(
                             Standalone(
                                 price_usd=entry.price_usd,
@@ -158,7 +159,7 @@ class SCDataBroker:
                     if ship_id_from is not None and ship_id_to is not None:
                         needs_review = any([needs_review_from, needs_review_to])
                         if needs_review:
-                            need_review_count += 1
+                            need_review_count_upgrades += 1
                         upgrades.append(
                             Upgrade(
                                 price_usd=entry.price_usd,
@@ -170,16 +171,20 @@ class SCDataBroker:
                             )
                         )
 
-            self._em.update_reddit_standalones(standalones)
-            self._em.update_reddit_upgrades(upgrades)
+            total_standalones = self._em.update_reddit_standalones(standalones)
+            total_upgrades = self._em.update_reddit_upgrades(upgrades)
 
             self._logger.info(
                 f"{len(entries) - (len(standalones) + len(upgrades))} Reddit entries could not be resolved."
             )
-            # TODO: only display if any entries were updated/inserted
-            if need_review_count > 0:
+
+            if need_review_count_standalones > 0 and total_standalones > 0:
                 self._logger.warning(
-                    f"{need_review_count} Reddit entries need to be checked manually."
+                    f"{need_review_count_standalones} Reddit standalones need to be checked manually."
+                )
+            if need_review_count_upgrades > 0 and total_upgrades > 0:
+                self._logger.warning(
+                    f"{need_review_count_upgrades} Reddit upgrades need to be checked manually."
                 )
 
     def get_ships(self, force_update: bool = False) -> List[Ship]:
