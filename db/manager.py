@@ -138,8 +138,14 @@ class EntityManager:
             return
         for item in deletion:
             self._session.delete(item)
-        self._logger.info(f"Deleting {len(deletion)} stale entries for {update_type}")
+
         self._session.commit()
+
+        deleted_count = len(deletion)
+        if deleted_count > 0:
+            self._logger.info(
+                f"Deleted {deleted_count} stale entries for {update_type.value}"
+            )
 
     def find_store(self, username: str, url: str) -> Store:
         """
@@ -156,8 +162,42 @@ class EntityManager:
             store = Store(username=username, url=url)
             self._session.add(store)
             self._session.flush()
-            self._logger.success(f"Found new store {store}.")
+            self._logger.success(f"Found {store}.", CustomLogger.LEVEL_INFO)
         return store
+
+    def _entity_exists(
+        self, entity: Union[Manufacturer, Ship, Store, Standalone, Upgrade]
+    ):
+        query: Optional[Query] = None
+        if type(entity) == Manufacturer:
+            entity: Manufacturer
+            query = self._session.query(Manufacturer).filter_by(name=entity.name)
+        elif type(entity) == Ship:
+            entity: Ship
+            query = self._session.query(Ship).filter_by(name=entity.name)
+        elif type(entity) == Store:
+            entity: Store
+            query = self._session.query(Store).filter_by(url=entity.url)
+        elif type(entity) == Standalone:
+            entity: Standalone
+            query = self._session.query(Standalone).filter_by(
+                price_usd=entity.price_usd,
+                store_id=entity.store_id,
+                ship_id=entity.ship_id,
+            )
+        elif type(entity) == Upgrade:
+            entity: Upgrade
+            query = self._session.query(Upgrade).filter_by(
+                price_usd=entity.price_usd,
+                store_id=entity.store_id,
+                ship_id_from=entity.ship_id_from,
+                ship_id_to=entity.ship_id_to,
+            )
+        else:
+            raise ValueError(
+                f"{self._entity_exists.__name__} can't handle entities of type {type(entity)}!"
+            )
+        return query.first() is not None
 
     def _update_entities(
         self,
@@ -176,12 +216,18 @@ class EntityManager:
         existing_entities = self._get_entities(update_type)
         entities_set = set(entities)
 
-        # delete invalid entities first
+        # delete stale entities first (older than expiry dates defined in const.py)
         self._remove_stale_entities(update_type)
+
+        # remove entries that are currently existing
+        cleaned_entities = [
+            entity for entity in entities_set if not self._entity_exists(entity)
+        ]
+        cleaned_count = len(entities_set) - len(cleaned_entities)
 
         # add new entities
         new_count = 0
-        for entity in entities_set:
+        for entity in cleaned_entities:
             if entity not in existing_entities:
                 self._session.merge(entity)
                 self._logger.debug(f">>> Adding {entity}.")
@@ -193,6 +239,11 @@ class EntityManager:
             )
         else:
             self._logger.info(f">>> No new {update_type_name}(s) detected.")
+
+        if cleaned_count > 0:
+            self._logger.info(
+                f">>> {cleaned_count} already existing entries were ignored."
+            )
 
         self._session.commit()
         self._logger.info(status.get_status_done_str())

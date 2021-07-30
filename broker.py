@@ -143,6 +143,7 @@ class SCDataBroker:
                             Standalone(
                                 price_usd=entry.price_usd,
                                 store=store,
+                                store_id=store.id,
                                 ship_id=ship_id,
                                 needs_review=needs_review,
                             )
@@ -162,6 +163,7 @@ class SCDataBroker:
                             Upgrade(
                                 price_usd=entry.price_usd,
                                 store=store,
+                                store_id=store.id,
                                 ship_id_from=ship_id_from,
                                 ship_id_to=ship_id_to,
                                 needs_review=needs_review,
