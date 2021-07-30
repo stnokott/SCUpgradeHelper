@@ -156,7 +156,7 @@ class EntityManager:
             store = Store(username=username, url=url)
             self._session.add(store)
             self._session.flush()
-            self._logger.debug(f"Created new store {store}.")
+            self._logger.success(f"Found new store {store}.")
         return store
 
     def _update_entities(
