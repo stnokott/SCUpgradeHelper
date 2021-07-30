@@ -28,7 +28,7 @@ from db.entity import (
     UpdateLog,
     Store,
 )
-from util import StatusString, CustomLogger
+from util import CustomLogger
 
 
 class EntityManager:
@@ -211,8 +211,9 @@ class EntityManager:
             return
 
         update_type_name: str = update_type.value
-        status = StatusString(f"PROCESSING {update_type_name.upper()}")
-        self._logger.info(status.get_status_str())
+        self._logger.header_start(
+            f"PROCESSING {update_type_name.upper()}", CustomLogger.LEVEL_INFO
+        )
         existing_entities = self._get_entities(update_type)
         entities_set = set(entities)
 
@@ -246,7 +247,7 @@ class EntityManager:
             )
 
         self._session.commit()
-        self._logger.info(status.get_status_done_str())
+        self._logger.header_end(CustomLogger.LEVEL_INFO)
 
     def _get_entities(
         self, entity_type: Union[UpdateType, Type[Base]]

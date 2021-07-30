@@ -1,39 +1,12 @@
 """Provides utility classes and functions"""
-import enum
 import logging
+import shutil
 from datetime import timedelta
 from logging import Logger
-from typing import Union, Any
+from math import floor, ceil
+from typing import Union
 
 from colorama import init, Fore, Style, Back
-
-
-class StatusString:
-    """
-    Provides status strings for logging
-    """
-
-    __DONE_STR = "DONE"
-
-    def __init__(self, status: str):
-        self.__status = status
-
-    def get_status_str(self) -> str:
-        """
-        Returns:
-            status string
-        """
-        return f"### {self.__status} ###"
-
-    def get_status_done_str(self) -> str:
-        """
-        Returns:
-            status done string
-        """
-        if len(self.__status) < 4:
-            return f"### {self.__DONE_STR} ###"
-        surrounding_hashs = round((len(self.__status) - len(self.__DONE_STR)) / 2) * "#"
-        return f"###{surrounding_hashs} {self.__DONE_STR} {surrounding_hashs}###"
 
 
 def format_timedelta(delta: timedelta) -> str:
@@ -78,8 +51,20 @@ class CustomLogger:
     def debug(self, s: Union[str, Exception]):
         self._logger.debug(Fore.BLACK + str(s) + Style.RESET_ALL)
 
-    def header(self, s: Union[str, Exception], level: int):
-        self._logger.log(level, Back.GREEN + Fore.BLACK + str(s) + Style.RESET_ALL)
+    def _header(self, s: str, level: int):
+        s_len = len(s)
+        console_width = shutil.get_terminal_size().columns
+        padded_char_count_left = floor((console_width - s_len) / 2) - 1
+        padded_char_count_right = ceil((console_width - s_len) / 2) - 1
+        msg = f"{'#' * padded_char_count_left} {str(s)} {'#' * padded_char_count_right}"
+        self._logger.log(level, Back.GREEN + Fore.BLACK + msg + Style.RESET_ALL)
+
+    def header_start(self, s: Union[str, Exception], level: int):
+        self._logger.log(level, "\n")
+        self._header(s, level)
+
+    def header_end(self, level: int):
+        self._header("DONE", level)
 
     def success(self, s: Union[str, Exception], level: int):
         self._logger.log(level, Back.BLACK + Fore.GREEN + str(s) + Style.RESET_ALL)

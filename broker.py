@@ -176,6 +176,7 @@ class SCDataBroker:
             self._logger.info(
                 f"{len(entries) - (len(standalones) + len(upgrades))} Reddit entries could not be resolved."
             )
+            # TODO: only display if any entries were updated/inserted
             if need_review_count > 0:
                 self._logger.warning(
                     f"{need_review_count} Reddit entries need to be checked manually."

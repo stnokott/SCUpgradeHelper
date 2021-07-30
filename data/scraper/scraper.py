@@ -106,9 +106,7 @@ class RSIScraper:
         Returns:
             list of ships generated from json
         """
-        self._logger.header(
-            "### REQUESTING OFFICIAL SHIPS ###", CustomLogger.LEVEL_INFO
-        )
+        self._logger.header_start("REQUESTING OFFICIAL SHIPS", CustomLogger.LEVEL_INFO)
         ships = []
         response = requests.get(self.__SHIP_LIST_URL)
         # TODO: replace duplicate code
@@ -132,9 +130,7 @@ class RSIScraper:
             f">>> {len(ships)} ships retrieved from {RSI_SCRAPER_STORE_OWNER}.",
             CustomLogger.LEVEL_WARN,
         )
-        self._logger.header(
-            "############## DONE #############", CustomLogger.LEVEL_INFO
-        )
+        self._logger.header_end(CustomLogger.LEVEL_INFO)
         self._ships = ships
         return ships
 
@@ -253,8 +249,8 @@ class RSIScraper:
         Returns:
             list of upgrades for all ships provided
         """
-        self._logger.header(
-            "### REQUESTING OFFICIAL UPGRADES ###", CustomLogger.LEVEL_INFO
+        self._logger.header_start(
+            "REQUESTING OFFICIAL UPGRADE", CustomLogger.LEVEL_INFO
         )
         self._logger.info(f">>> Base of {len(from_ships)} ships will be used.")
         session = self.create_anon_authorized_session()
@@ -268,9 +264,7 @@ class RSIScraper:
         self._logger.success(
             f">>> {len(upgrades)} upgrades found.", CustomLogger.LEVEL_INFO
         )
-        self._logger.header(
-            "################ DONE ##############", CustomLogger.LEVEL_INFO
-        )
+        self._logger.header_end(CustomLogger.LEVEL_INFO)
         return upgrades
 
     def get_upgrades_by_ship_id(self, ship_id: int, session: Session) -> List[Upgrade]:
