@@ -1,6 +1,6 @@
 """Manager for database entities"""
 from datetime import datetime
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type, Union, Tuple
 
 from fuzzywuzzy import process, fuzz
 from sqlalchemy import create_engine
@@ -296,7 +296,15 @@ class EntityManager:
         """
         return self._get_entities(UpdateType.SHIPS)
 
-    def find_ship_id_by_name(self, name: str) -> Optional[int]:
+    def find_ship_id_by_name(self, name: str) -> Optional[Tuple[int, bool]]:
+        """
+        Tries to find ship in database using fuzzy search.
+        Returns ship id and `needs_review`-flag if found, else None
+        :param name: Name of ship
+        :type name: string
+        :return: ship id and `needsreview` flag or None if not found
+        :rtype: Optional[Tuple[int, bool]]
+        """
         ships: List[Ship] = self._session.query(Ship).all()
         if ships is None or len(ships) == 0 or name == "" or name == '"':
             return None
@@ -327,12 +335,13 @@ class EntityManager:
                         self._logger.warning(
                             f"Match [{name}] -> [{result[0]}] needs to be reviewed (score {result[1]}/100)."
                         )
+                        return ship_id, True
                     else:
                         self._logger.success(
                             f"Mapped [{name}] -> [{result[0]}] (score {result[1]}/100).",
                             CustomLogger.LEVEL_DEBUG,
                         )
-                    return ship_id
+                        return ship_id, False
         self._logger.failure(
             f"Ship name [{name}] could not be resolved to entry in database!",
             CustomLogger.LEVEL_DEBUG,

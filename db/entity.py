@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     Text,
+    Boolean,
     UniqueConstraint,
 )
 from sqlalchemy.ext.declarative import declarative_base
@@ -42,6 +43,10 @@ class BaseMixin(object):
 
 class DeltaProcessedMixin(object):
     loaddate = Column(DateTime)
+
+
+class ReviewedMixin(object):
+    needs_review = Column(Boolean, nullable=False, default=False)
 
 
 class Manufacturer(BaseMixin, Base):
@@ -155,7 +160,7 @@ class Store(BaseMixin, Base):
         return f"<{Store.__name__}>({self.username})"
 
 
-class Purchasable(BaseMixin, DeltaProcessedMixin, Base):
+class Purchasable(BaseMixin, DeltaProcessedMixin, ReviewedMixin, Base):
     __abstract__ = True
 
     price_usd = Column(Float, nullable=False)

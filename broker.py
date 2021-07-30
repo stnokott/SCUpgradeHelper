@@ -126,38 +126,58 @@ class SCDataBroker:
         )
         entries: List[ParsedRedditSubmissionEntry]
         entries, updated = reddit_data_provider.get_data(force, echo)
+        need_review_count = 0
         if updated or force:
             standalones = []
             upgrades = []
             for entry in entries:
                 store = self._em.find_store(entry.store_owner, entry.store_url)
                 if entry.update_type == UpdateType.REDDIT_STANDALONES:
-                    ship_id = self._em.find_ship_id_by_name(entry.ship_name)
+                    ship_id, needs_review = self._em.find_ship_id_by_name(
+                        entry.ship_name
+                    ) or (None, None)
                     if ship_id is not None:
+                        if needs_review:
+                            need_review_count += 1
                         standalones.append(
                             Standalone(
                                 price_usd=entry.price_usd,
                                 store=store,
                                 ship_id=ship_id,
+                                needs_review=needs_review,
                             )
                         )
                 elif entry.update_type == UpdateType.REDDIT_UPGRADES:
-                    ship_id_from = self._em.find_ship_id_by_name(entry.ship_name_from)
-                    ship_id_to = self._em.find_ship_id_by_name(entry.ship_name_to)
+                    ship_id_from, needs_review_from = self._em.find_ship_id_by_name(
+                        entry.ship_name_from
+                    ) or (None, None)
+                    ship_id_to, needs_review_to = self._em.find_ship_id_by_name(
+                        entry.ship_name_to
+                    ) or (None, None)
                     if ship_id_from is not None and ship_id_to is not None:
+                        needs_review = any([needs_review_from, needs_review_to])
+                        if needs_review:
+                            need_review_count += 1
                         upgrades.append(
                             Upgrade(
                                 price_usd=entry.price_usd,
                                 store=store,
                                 ship_id_from=ship_id_from,
                                 ship_id_to=ship_id_to,
+                                needs_review=needs_review,
                             )
                         )
+
+            self._em.update_reddit_standalones(standalones)
+            self._em.update_reddit_upgrades(upgrades)
+
             self._logger.info(
                 f"{len(entries) - (len(standalones) + len(upgrades))} Reddit entries could not be resolved."
             )
-            self._em.update_reddit_standalones(standalones)
-            self._em.update_reddit_upgrades(upgrades)
+            if need_review_count > 0:
+                self._logger.warning(
+                    f"{need_review_count} Reddit entries need to be checked manually."
+                )
 
     def get_ships(self, force_update: bool = False) -> List[Ship]:
         """
