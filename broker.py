@@ -1,10 +1,10 @@
 """Contains broker classes for communicating data between APIs and the database"""
 import datetime
-from typing import List
+from typing import List, Optional
 
 from config import ConfigProvider
 from const import RSI_SCRAPER_STORE_URL, RSI_SCRAPER_STORE_OWNER
-from data.analyze import PathAnalyzer
+from data.analyze import PathAnalyzer, UpgradePath, PurchasePath
 from data.api import SCApi
 from data.provider import (
     DataProviderManager,
@@ -89,6 +89,14 @@ class SCDataBroker:
         self._update_rsi_upgrades(force, echo)
         self._update_reddit_entries(force, echo)
         self._path_analyzer.update()
+
+    def get_upgrade_path(
+        self, ship_id_from: int, ship_id_to: int
+    ) -> Optional[UpgradePath]:
+        return self._path_analyzer.get_upgrade_path(ship_id_from, ship_id_to)
+
+    def get_purchase_path(self, ship_id_to: int) -> Optional[PurchasePath]:
+        return self._path_analyzer.get_purchase_path(ship_id_to)
 
     def _update_ships(self, force: bool = False, echo: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(
