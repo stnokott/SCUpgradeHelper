@@ -164,7 +164,7 @@ class RSIScraper:
             # find fitting sku candidates
             sku_candidates = list(
                 filter(
-                    lambda sku_ship_name: ship.name in sku_ship_name,
+                    lambda sku_ship_name, s=ship: s.name in sku_ship_name,
                     sku_ship_names,
                 )
             )

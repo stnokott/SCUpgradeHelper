@@ -383,7 +383,9 @@ class EntityManager:
                 limit=3,
             )
             max_score = max([result[1] for result in results])
-            best_candidates = list(filter(lambda c: c[1] == max_score, results))
+            best_candidates = list(
+                filter(lambda c, score=max_score: c[1] == score, results)
+            )
             best_candidates.sort(key=lambda c: len(c[0]), reverse=True)
             result = best_candidates[0]
 
