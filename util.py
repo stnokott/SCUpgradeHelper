@@ -4,7 +4,7 @@ import shutil
 from datetime import timedelta
 from logging import Logger
 from math import floor, ceil
-from typing import Union
+from typing import Any
 
 from colorama import init, Fore, Style, Back
 
@@ -48,7 +48,7 @@ class CustomLogger:
         self._logger.setLevel(level)
         self._logger.addHandler(logging.StreamHandler())
 
-    def debug(self, s: Union[str, Exception]):
+    def debug(self, s: Any):
         self._logger.debug(Fore.BLACK + str(s) + Style.RESET_ALL)
 
     def _header(self, s: str, level: int):
@@ -59,24 +59,24 @@ class CustomLogger:
         msg = f"{'#' * padded_char_count_left} {str(s)} {'#' * padded_char_count_right}"
         self._logger.log(level, Back.GREEN + Fore.BLACK + msg + Style.RESET_ALL)
 
-    def header_start(self, s: Union[str, Exception], level: int):
+    def header_start(self, s: Any, level: int):
         self._logger.log(level, "\n")
-        self._header(s, level)
+        self._header(str(s), level)
 
     def header_end(self, level: int):
         self._header("DONE", level)
 
-    def success(self, s: Union[str, Exception], level: int):
+    def success(self, s: Any, level: int):
         self._logger.log(level, Back.BLACK + Fore.GREEN + str(s) + Style.RESET_ALL)
 
-    def failure(self, s: Union[str, Exception], level: int):
+    def failure(self, s: Any, level: int):
         self._logger.log(level, Back.BLACK + Fore.RED + str(s) + Style.RESET_ALL)
 
-    def info(self, s: Union[str, Exception]):
+    def info(self, s: Any):
         self._logger.info(Back.BLACK + Fore.WHITE + str(s) + Style.RESET_ALL)
 
-    def warning(self, s: Union[str, Exception]):
+    def warning(self, s: Any):
         self._logger.warning(Back.YELLOW + Fore.BLACK + str(s) + Style.RESET_ALL)
 
-    def error(self, s: Union[str, Exception]):
+    def error(self, s: Any):
         self._logger.error(Back.RED + Fore.WHITE + str(s) + Style.RESET_ALL)
