@@ -4,6 +4,7 @@ from typing import List
 
 from config import ConfigProvider
 from const import RSI_SCRAPER_STORE_URL, RSI_SCRAPER_STORE_OWNER
+from data.analyze import PathAnalyzer
 from data.api import SCApi
 from data.provider import (
     DataProviderManager,
@@ -71,6 +72,7 @@ class SCDataBroker:
                 logger,
             ),
         )
+        self._path_analyzer = PathAnalyzer(self._em, self._logger)
         self.complete_update(force_update, True)
 
     def complete_update(self, force: bool = False, echo: bool = False) -> None:
@@ -86,6 +88,7 @@ class SCDataBroker:
         self._update_rsi_standalones(force, echo)
         self._update_rsi_upgrades(force, echo)
         self._update_reddit_entries(force, echo)
+        self._path_analyzer.update()
 
     def _update_ships(self, force: bool = False, echo: bool = False) -> None:
         ship_data_provider = self._data_provider_manager.get_data_provider(

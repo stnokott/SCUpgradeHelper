@@ -79,21 +79,20 @@ class EntityManager:
             Upgrade.store.has(Store.username == RSI_SCRAPER_STORE_OWNER)
         )
 
-    def _query_reddit_standalones(self) -> Query:
-        return self._session.query(Standalone).filter(
+    def _query_reddit_items(
+        self,
+        entity_type: Union[Type[Standalone], Type[Upgrade]],
+        include_unconfirmed: bool,
+    ):
+        query = self._session.query(entity_type).filter(
             or_(
-                Standalone.store.has(Store.url.ilike("%reddit.com%")),
-                Standalone.store.has(Store.url.ilike("%redd.it%")),
+                entity_type.store.has(Store.url.ilike("%reddit.com%")),
+                entity_type.store.has(Store.url.ilike("%redd.it%")),
             )
         )
-
-    def _query_reddit_upgrades(self) -> Query:
-        return self._session.query(Upgrade).filter(
-            or_(
-                Upgrade.store.has(Store.url.ilike("%reddit.com%")),
-                Upgrade.store.has(Store.url.ilike("%redd.it%")),
-            )
-        )
+        if not include_unconfirmed:
+            query = query.filter_by(needs_review=False)
+        return query
 
     def _remove_stale_entities(self, update_type: UpdateType) -> None:
         now = datetime.now()
@@ -118,14 +117,14 @@ class EntityManager:
                 if now - upgrade.loaddate > RSI_UPGRADE_DATA_EXPIRY
             ]
         elif update_type == UpdateType.REDDIT_STANDALONES:
-            standalones = self._query_reddit_standalones().all()
+            standalones = self._query_reddit_items(Standalone, True).all()
             deletion = [
                 standalone
                 for standalone in standalones
                 if now - standalone.loaddate > REDDIT_DATA_EXPIRY
             ]
         elif update_type == UpdateType.REDDIT_UPGRADES:
-            upgrades = self._query_reddit_upgrades().all()
+            upgrades = self._query_reddit_items(Upgrade, True).all()
             deletion = [
                 upgrade
                 for upgrade in upgrades
@@ -251,26 +250,27 @@ class EntityManager:
         return total_count
 
     def _get_entities(
-        self, entity_type: Union[UpdateType, Type[Base]]
+        self, update_type: Union[UpdateType, Type[Base]], **kwargs
     ) -> List[Type[Base]]:
-        if entity_type in (UpdateType.MANUFACTURERS, Manufacturer):
+        include_unconfirmed: bool = kwargs.get("include_unconfirmed", True)
+        if update_type in (UpdateType.MANUFACTURERS, Manufacturer):
             return self._session.query(Manufacturer).all()
-        elif entity_type in (UpdateType.SHIPS, Ship):
+        elif update_type in (UpdateType.SHIPS, Ship):
             return self._session.query(Ship).all()
-        elif entity_type == Standalone:
+        elif update_type == Standalone:
             return self._session.query(Standalone).all()
-        elif entity_type == Upgrade:
+        elif update_type == Upgrade:
             return self._session.query(Upgrade).all()
-        elif entity_type == UpdateType.RSI_STANDALONES:
+        elif update_type == UpdateType.RSI_STANDALONES:
             return self._query_rsi_standalones().all()
-        elif entity_type == UpdateType.RSI_UPGRADES:
+        elif update_type == UpdateType.RSI_UPGRADES:
             return self._query_rsi_upgrades().all()
-        elif entity_type == UpdateType.REDDIT_STANDALONES:
-            return self._query_reddit_standalones().all()
-        elif entity_type == UpdateType.REDDIT_UPGRADES:
-            return self._query_reddit_upgrades().all()
+        elif update_type == UpdateType.REDDIT_STANDALONES:
+            return self._query_reddit_items(Standalone, include_unconfirmed).all()
+        elif update_type == UpdateType.REDDIT_UPGRADES:
+            return self._query_reddit_items(Upgrade, include_unconfirmed).all()
         else:
-            raise ValueError(f"Invalid update_type passed: {entity_type}")
+            raise ValueError(f"Invalid update_type passed: {update_type}")
 
     def update_manufacturers(self, manufacturers: List[Manufacturer]) -> int:
         """
@@ -430,19 +430,39 @@ class EntityManager:
         """
         return self._get_entities(UpdateType.RSI_UPGRADES)
 
-    def get_reddit_standalones(self) -> List[Standalone]:
+    def get_reddit_standalones(
+        self, include_unconfirmed: bool = True
+    ) -> List[Standalone]:
         """
-        Returns:
-            All Reddit RSI upgrade entities in database
-        """
-        return self._get_entities(UpdateType.REDDIT_STANDALONES)
+        :param include_unconfirmed: Whether to include entries that still need review
+        :type include_unconfirmed: bool
 
-    def get_reddit_upgrades(self) -> List[Upgrade]:
-        """
         Returns:
-            All Reddit RSI upgrade entities in database
+            All Reddit RSI upgrade entities in database, optionally filtered by `needs_review`
         """
-        return self._get_entities(UpdateType.REDDIT_UPGRADES)
+        return self._get_entities(
+            UpdateType.REDDIT_STANDALONES, include_unconfirmed=include_unconfirmed
+        )
+
+    def get_reddit_upgrades(self, include_unconfirmed: bool = True) -> List[Upgrade]:
+        """
+        :param include_unconfirmed: Whether to include entries that still need review
+        :type include_unconfirmed: bool
+
+        Returns:
+            All Reddit RSI upgrade entities in database, optionally filtered by `needs_review`
+        """
+        return self._get_entities(
+            UpdateType.REDDIT_UPGRADES, include_unconfirmed=include_unconfirmed
+        )
+
+    def get_all_standalones(self, include_unconfirmed: bool = True) -> List[Standalone]:
+        return self.get_rsi_standalones() + self.get_reddit_standalones(
+            include_unconfirmed
+        )
+
+    def get_all_upgrades(self, include_unconfirmed: bool = True) -> List[Upgrade]:
+        return self.get_rsi_upgrades() + self.get_reddit_upgrades(include_unconfirmed)
 
     def get_loaddate(self, update_type: UpdateType) -> Optional[datetime]:
         """
