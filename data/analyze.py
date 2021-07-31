@@ -119,7 +119,9 @@ class PathAnalyzer:
             i += 1
         return UpgradePath(upgrades)
 
-    def get_upgrade_path(self, start_ship_id: int, target_ship_id: int) -> UpgradePath:
+    def get_upgrade_path(
+        self, start_ship_id: int, target_ship_id: int
+    ) -> Optional[UpgradePath]:
         if start_ship_id == _SHIP_ID_NONE:
             raise ValueError(
                 f"Invalid <start_ship_id>={_SHIP_ID_NONE}, "
@@ -127,14 +129,20 @@ class PathAnalyzer:
             )
 
         dspf = DijkstraSPF(self._graph, start_ship_id)
-        upgrade_path = dspf.get_path(target_ship_id)
+        try:
+            upgrade_path = dspf.get_path(target_ship_id)
+        except KeyError:
+            return None
         return self._resolve_upgrade_path(upgrade_path, dspf)
 
-    def get_purchase_path(self, target_ship_id: int) -> PurchasePath:
+    def get_purchase_path(self, target_ship_id: int) -> Optional[PurchasePath]:
         dspf = DijkstraSPF(self._graph, _SHIP_ID_NONE)
         path = dspf.get_path(target_ship_id)
         starting_standalone = self._resolve_standalone(
             path[1], dspf.get_edge_weight(self._graph, path[0], path[1])
         )
-        upgrade_path = self._resolve_upgrade_path(path[1:], dspf)
+        try:
+            upgrade_path = self._resolve_upgrade_path(path[1:], dspf)
+        except KeyError:
+            return None
         return PurchasePath(starting_standalone, upgrade_path)
