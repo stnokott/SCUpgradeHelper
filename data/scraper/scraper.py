@@ -145,9 +145,9 @@ class RSIScraper:
         """
         return self.create_standalones(ships, self.get_skus())
 
-    @classmethod
+    @staticmethod
     def create_standalones(
-        cls, ships: List[Ship], skus: Dict[str, float]
+        ships: List[Ship], skus: Dict[str, float]
     ) -> List[Standalone]:
         """
         Overwrites ship prices with list of sku prices, if found in sku list
@@ -332,8 +332,8 @@ class RSIScraper:
         session.post(cls.__SET_CONTEXT_TOKEN_URL, data={})
         return session
 
-    @classmethod
-    def ship_from_json(cls, ship_json: json) -> Ship:
+    @staticmethod
+    def ship_from_json(ship_json: json) -> Ship:
         """
         Create ship instance from RSI-formatted json
         Args:
@@ -355,8 +355,8 @@ class RSIScraper:
             manufacturer=manufacturer,
         )
 
-    @classmethod
-    def upgrade_from_json(cls, upgrade_json: json, from_id: int) -> Upgrade:
+    @staticmethod
+    def upgrade_from_json(upgrade_json: json, from_id: int) -> Upgrade:
         """
         Create Upgrade instance from RSI json
         Args:
