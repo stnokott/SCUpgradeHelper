@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from dijkstra import DijkstraSPF, Graph
 
@@ -34,10 +34,16 @@ class PurchasePath:
         self.path = path
 
     def __repr__(self):
-        s_summary = f"Target: {self.path.upgrades[-1].ship_to.name}"
+        target_ship = (
+            self.path.upgrades[-1].ship_to
+            if len(self.path.upgrades) > 0
+            else self.start_purchase.ship
+        )
+        s_summary = f"Target: {target_ship.name}"
         step_count = 1 + len(self.path)
+        s_step_count = f"{step_count} step{'s' if step_count > 1 else ''}"
         total_cost = self.start_purchase.price_usd + self.path.total_cost
-        s = f"<{PurchasePath.__name__}>([{s_summary}], {step_count} steps, total ${total_cost})"
+        s = f"<{PurchasePath.__name__}>([{s_summary}], {s_step_count}, total ${total_cost})"
         return s
 
 
