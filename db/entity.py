@@ -86,6 +86,8 @@ class Ship(BaseMixin, DeltaProcessedMixin, Base):
     """
 
     name = Column(Text, unique=True, nullable=False)
+    img_url_small = Column(Text, nullable=True)
+    img_url_large = Column(Text, nullable=True)
     manufacturer_id = Column(Integer, ForeignKey(Manufacturer.id), nullable=False)
 
     manufacturer = relationship("Manufacturer")
@@ -98,6 +100,10 @@ class Ship(BaseMixin, DeltaProcessedMixin, Base):
         """
         if self.name is not None:
             target.name = self.name
+        if self.img_url_small is not None:
+            target.img_url_small = self.img_url_small
+        if self.img_url_large is not None:
+            target.img_url_large = self.img_url_large
         if self.manufacturer_id is not None:
             target.manufacturer_id = self.manufacturer_id
         if self.manufacturer is not None:
@@ -163,6 +169,7 @@ class Store(BaseMixin, Base):
 class Purchasable(BaseMixin, DeltaProcessedMixin, ReviewedMixin, Base):
     __abstract__ = True
 
+    # TODO: convert column to integer
     price_usd = Column(Float, nullable=False)
 
     @declared_attr

@@ -2,7 +2,7 @@
 import json
 import re
 from functools import reduce
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import praw
 import requests
@@ -348,9 +348,19 @@ class RSIScraper:
             name=manufacturer_json["name"],
             code=manufacturer_json["code"],
         )
+        img_url_small: Optional[str] = None
+        img_url_large: Optional[str] = None
+        try:
+            images_json = ship_json["media"][0]["images"]
+            img_url_small = images_json.get("store_hub_small", None)
+            img_url_large = images_json.get("store_hub_large", None)
+        except KeyError:
+            pass
         return Ship(
             id=ship_json["id"],
             name=ship_json["name"],
+            img_url_small=img_url_small,
+            img_url_large=img_url_large,
             manufacturer_id=manufacturer.id,
             manufacturer=manufacturer,
         )
