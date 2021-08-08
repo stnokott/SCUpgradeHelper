@@ -27,6 +27,8 @@ class ParsedRedditSubmissionEntry:
     _REGEX_PRICE_SPLIT_USD_LAST = re.compile(
         r"(?:(?:€\s?\d+)|(?:\d+\s?€))\D*(?:(?:\$\?(\d+))|(?:(\d+)\s?\$))"
     )
+    _REGEX_PARSE_PRICE_FLOAT = re.compile(r"[^\d.]")
+    _REGEX_CHECK_PRICE_STR = re.compile(r"^\d+\.?\d+$")
 
     @classmethod
     def _parse_price_string(cls, price_string: str) -> Optional[float]:
@@ -39,13 +41,15 @@ class ParsedRedditSubmissionEntry:
         elif regex_match_usd_last is not None:
             return float(regex_match_usd_last.group(1) or regex_match_usd_last.group(2))
         else:
-            # remove non-numeric characters from price string
-            numeric_filter = filter(str.isdigit, price_string)
-            fixed_price_string = "".join(numeric_filter)
-            if len(fixed_price_string) == 0:
-                return None
+            # Do simple parse
+            parsed_string = re.sub(cls._REGEX_PARSE_PRICE_FLOAT, "", price_string)
+            if (
+                parsed_string.strip() != ""
+                and cls._REGEX_CHECK_PRICE_STR.match(parsed_string) is not None
+            ):
+                return float(parsed_string)
             else:
-                return float(fixed_price_string)
+                return None
 
     def __init__(self, *args, **kwargs):
         """
@@ -192,7 +196,6 @@ class _HTMLTableParser(_GenericSubmissionParser):
                     update_type = table_metadata.type
                     try:
                         price_usd = row[table_metadata.col_index_price]
-                        # TODO: parse manufacturer name
                         if update_type == UpdateType.REDDIT_STANDALONES:
                             parsed_submissions.append(
                                 ParsedRedditSubmissionEntry(
