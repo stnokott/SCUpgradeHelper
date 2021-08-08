@@ -55,7 +55,7 @@ class RedditScraper:
         submissions = self._subreddit.search(
             f"flair:'{self.__SUBREDDIT_STORE_FLAIR_NAME}'",
             sort="new",
-            limit=10,
+            limit=50,
         )
         filtered_submissions = self._filter_good_submissions(submissions)
         return filtered_submissions

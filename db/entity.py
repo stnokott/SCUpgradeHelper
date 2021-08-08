@@ -169,7 +169,6 @@ class Store(BaseMixin, Base):
 class Purchasable(BaseMixin, DeltaProcessedMixin, ReviewedMixin, Base):
     __abstract__ = True
 
-    # TODO: convert column to integer
     price_usd = Column(Float, nullable=False)
 
     @declared_attr
