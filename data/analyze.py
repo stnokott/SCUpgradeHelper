@@ -11,6 +11,26 @@ class UpgradePath:
     def __init__(self, upgrades: List[Upgrade]):
         self.upgrades = upgrades
         self.total_cost = sum([upgrade.price_usd for upgrade in self.upgrades])
+        self._full_string = self._generate_full_string()
+
+    def _generate_full_string(self) -> str:
+        string = (
+            "Upgrade path:\n"
+            f"{self.upgrades[0].ship_from.name} -> {self.upgrades[-1].ship_to.name}\n"
+            f"Total cost: ${self.total_cost}\n"
+            "Steps:"
+        )
+        for i, upgrade in enumerate(self.upgrades):
+            string += f"\n  {i + 1}) {upgrade.ship_from.name} -> {upgrade.ship_to.name} (${upgrade.price_usd}) @ {upgrade.store.url}"
+        return string
+
+    def full_print(
+        self, logger: CustomLogger = None, logging_level: int = CustomLogger.LEVEL_INFO
+    ) -> None:
+        if logger is None:
+            print(self._full_string)
+        else:
+            logger.log(self._full_string, logging_level)
 
     def __len__(self):
         return len(self.upgrades)
