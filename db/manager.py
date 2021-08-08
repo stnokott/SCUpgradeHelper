@@ -396,7 +396,7 @@ class EntityManager:
                 if ship_id is not None:
                     if result[1] < FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE:
                         self._logger.warning(
-                            f"Match [{name}] -> [{result[0]}] needs to be reviewed (score {result[1]}/100)."
+                            f"NEEDS REVIEW: Match [{name}] -> [{result[0]}] (score {result[1]}/100)."
                         )
                         return ship_id, True
                     else:
