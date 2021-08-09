@@ -73,12 +73,10 @@ class TestEntityManager:
     def test_get_reddit_standalones(self):
         reddit_standalones = self._EM.get_reddit_standalones()
         assert reddit_standalones is not None
-        assert len(reddit_standalones) > 0
 
     def test_get_reddit_upgrades(self):
         reddit_upgrades = self._EM.get_reddit_upgrades()
         assert reddit_upgrades is not None
-        assert len(reddit_upgrades) > 0
 
     def test_get_all_standalones(self):
         standalones = self._EM.get_all_standalones(True)
