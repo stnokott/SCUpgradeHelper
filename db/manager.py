@@ -1,11 +1,12 @@
 """Manager for database entities"""
 from datetime import datetime
+from os import path
 from typing import List, Optional, Type, Union, Tuple
 
 from fuzzywuzzy import process, fuzz
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, configure_mappers, Query
-from sqlalchemy.sql.expression import func, or_
+from sqlalchemy.sql.expression import func, or_, and_, select
 
 from const import (
     DATABASE_FILEPATH,
@@ -37,7 +38,12 @@ class EntityManager:
     """
 
     def __init__(self, logger: CustomLogger):
-        self._engine = create_engine(f"sqlite:///{DATABASE_FILEPATH}", echo=False)
+        database_dir = path.abspath(
+            path.join(path.abspath(path.dirname(__file__)), "..")
+        )
+        self._engine = create_engine(
+            f"sqlite:///{path.join(database_dir, DATABASE_FILEPATH)}", echo=False
+        )
         configure_mappers()
         self._session = Session(bind=self._engine, expire_on_commit=False)
         self._logger = logger
@@ -60,13 +66,17 @@ class EntityManager:
 
         self._logger.debug(">>> Limit exceeded, cleaning entries...")
         for update_type in UpdateType:
-            max_loaddate_query = self._session.query(
-                func.max(UpdateLog.loaddate)
-            ).filter_by(data_type=update_type)
+            max_loaddate_query = (
+                self._session.query(func.max(UpdateLog.loaddate))
+                .filter(UpdateLog.update_type == update_type)
+                .subquery()
+            )
             self._session.query(UpdateLog).filter(
-                UpdateLog.update_type == update_type,
-                UpdateLog.loaddate.notin_(max_loaddate_query),
-            ).delete()
+                and_(
+                    UpdateLog.update_type == update_type,
+                    UpdateLog.loaddate.not_in(select(max_loaddate_query)),
+                )
+            ).delete(synchronize_session="fetch")
         self._session.commit()
 
     def _query_rsi_standalones(self) -> Query:
@@ -396,7 +406,7 @@ class EntityManager:
                 if ship_id is not None:
                     if result[1] < FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE:
                         self._logger.warning(
-                            f"Match [{name}] -> [{result[0]}] needs to be reviewed (score {result[1]}/100)."
+                            f"NEEDS REVIEW: Match [{name}] -> [{result[0]}] (score {result[1]}/100)."
                         )
                         return ship_id, True
                     else:

@@ -48,6 +48,16 @@ class CustomLogger:
         self._logger.setLevel(level)
         self._logger.addHandler(logging.StreamHandler())
 
+    def log(self, s: Any, level: int = LEVEL_INFO):
+        if level == self.LEVEL_DEBUG:
+            self.debug(s)
+        elif level == self.LEVEL_INFO:
+            self.info(s)
+        elif level == self.LEVEL_WARN:
+            self.warning(s)
+        elif level == self.LEVEL_ERR:
+            self.error(s)
+
     def debug(self, s: Any):
         self._logger.debug(Fore.BLACK + str(s) + Style.RESET_ALL)
 

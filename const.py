@@ -68,6 +68,7 @@ _FUZZY_SEARCH_LENGTH_OFFSET_FACTOR = 0.3
 
 
 def fuzzy_search_min_score(length: int) -> int:
+    """The higher the length, the higher the min score"""
     return _FUZZY_SEARCH_MIN_SCORE_BASE - (
         10
         - min(

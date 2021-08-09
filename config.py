@@ -16,16 +16,30 @@ class ConfigProvider:
     Provides configuration data from config file
     """
 
+    _CONFIG_FILEPATH = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIG_FILEPATH)
+    )
+
     def __init__(self, logger: CustomLogger):
         self._ensure_file_exists()
         self._config = configparser.ConfigParser()
-        self._config.read(CONFIG_FILEPATH)
+        self._config.read(self._CONFIG_FILEPATH)
 
         # read AUTH section
         auth_section = self._get_section("AUTH")
-        self.sc_api_key = auth_section["scapikey"]
-        self.reddit_client_id = auth_section["redditclientid"]
-        self.reddit_client_secret = auth_section["redditclientsecret"]
+        self.sc_api_key = (
+            auth_section["scapikey"] if auth_section["scapikey"] != "" else None
+        )
+        self.reddit_client_id = (
+            auth_section["redditclientid"]
+            if auth_section["redditclientid"] != ""
+            else None
+        )
+        self.reddit_client_secret = (
+            auth_section["redditclientsecret"]
+            if auth_section["redditclientsecret"] != ""
+            else None
+        )
         logger.success("Configuration parsed.", CustomLogger.LEVEL_INFO)
 
     def _get_section(self, section_name: str) -> configparser.SectionProxy:
@@ -54,7 +68,7 @@ class ConfigProvider:
 
     @classmethod
     def _ensure_file_exists(cls) -> None:
-        if os.path.exists(CONFIG_FILEPATH):
+        if os.path.exists(cls._CONFIG_FILEPATH):
             return
         # create config object with default values
         config = configparser.ConfigParser()
@@ -65,5 +79,5 @@ class ConfigProvider:
 
     @classmethod
     def _write_config(cls, config: configparser.ConfigParser) -> None:
-        with open(os.path.join(os.getcwd(), CONFIG_FILEPATH), "w") as config_file:
+        with open(cls._CONFIG_FILEPATH, "w") as config_file:
             config.write(config_file)

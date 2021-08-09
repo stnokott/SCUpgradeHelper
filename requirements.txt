@@ -6,3 +6,4 @@ fuzzywuzzy[speedup]~=0.18.0
 BeautifulSoup4~=4.9.3
 colorama~=0.4.4
 dijkstra~=0.2.1
+pytest~=6.2.4

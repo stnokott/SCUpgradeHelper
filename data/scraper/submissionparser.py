@@ -1,9 +1,9 @@
 """Contains classes for parsing Reddit submissions"""
+import re
 from abc import ABC, abstractmethod
-
-from bs4 import BeautifulSoup
 from typing import Optional, List
 
+from bs4 import BeautifulSoup
 from praw.reddit import Submission
 
 from const import REDDIT_PARSE_EXCLUDE_KEYWORDS
@@ -21,6 +21,36 @@ class ParsedRedditSubmissionEntry:
     Names and such will need to be mapped to their corresponding entries in the database.
     """
 
+    _REGEX_PRICE_SPLIT_USD_FIRST = re.compile(
+        r"(?:(?:\$\s?(\d+))|(?:(\d+)\s?\$))\D*(?:(?:€\?\d+)|(?:\d+\s?€))"
+    )
+    _REGEX_PRICE_SPLIT_USD_LAST = re.compile(
+        r"(?:(?:€\s?\d+)|(?:\d+\s?€))\D*(?:(?:\$\?(\d+))|(?:(\d+)\s?\$))"
+    )
+    _REGEX_PARSE_PRICE_FLOAT = re.compile(r"[^\d.]")
+    _REGEX_CHECK_PRICE_STR = re.compile(r"^\d+\.?\d+$")
+
+    @classmethod
+    def _parse_price_string(cls, price_string: str) -> Optional[float]:
+        regex_match_usd_first = cls._REGEX_PRICE_SPLIT_USD_FIRST.search(price_string)
+        regex_match_usd_last = cls._REGEX_PRICE_SPLIT_USD_LAST.search(price_string)
+        if regex_match_usd_first is not None:
+            return float(
+                regex_match_usd_first.group(1) or regex_match_usd_first.group(2)
+            )
+        elif regex_match_usd_last is not None:
+            return float(regex_match_usd_last.group(1) or regex_match_usd_last.group(2))
+        else:
+            # Do simple parse
+            parsed_string = re.sub(cls._REGEX_PARSE_PRICE_FLOAT, "", price_string)
+            if (
+                parsed_string.strip() != ""
+                and cls._REGEX_CHECK_PRICE_STR.match(parsed_string) is not None
+            ):
+                return float(parsed_string)
+            else:
+                return None
+
     def __init__(self, *args, **kwargs):
         """
         ParsedSubmissionProxy(
@@ -32,12 +62,11 @@ class ParsedRedditSubmissionEntry:
             [, ship_name_from = None, ship_name_to = None]
         """
         self.update_type: UpdateType = args[0]
-        # remove non-numeric characters from price string
-        numeric_filter = filter(str.isdigit, args[1])
-        fixed_price_string = "".join(numeric_filter)
-        if len(fixed_price_string) == 0:
+        parsed_price: Optional[float] = self._parse_price_string(args[1])
+        if parsed_price is None:
+            # could not be parsed
             raise NotParsableException(f"Price [{args[1]}] invalid")
-        self.price_usd: float = float(fixed_price_string)
+        self.price_usd: float = parsed_price
         self.store_owner: str = args[2]
         self.store_url: str = args[3]
         self.ship_name: Optional[str] = kwargs.get("ship_name") or None
@@ -98,24 +127,36 @@ class _HTMLTableParser(_GenericSubmissionParser):
                 return
 
             for i, header_item in enumerate(header):
-                if any(
-                    qualifier in header_item.lower()
-                    for qualifier in self._COL_QUALIFIERS_PRICE
+                if (
+                    any(
+                        qualifier in header_item.lower()
+                        for qualifier in self._COL_QUALIFIERS_PRICE
+                    )
+                    and self.col_index_price is None
                 ):
                     self.col_index_price = i
-                elif any(
-                    qualifier in header_item.lower()
-                    for qualifier in self._COL_QUALIFIERS_SHIP_NAME_FROM
+                elif (
+                    any(
+                        qualifier in header_item.lower()
+                        for qualifier in self._COL_QUALIFIERS_SHIP_NAME_FROM
+                    )
+                    and self.col_index_ship_name_from is None
                 ):
                     self.col_index_ship_name_from = i
-                elif any(
-                    qualifier in header_item.lower()
-                    for qualifier in self._COL_QUALIFIERS_SHIP_NAME_TO
+                elif (
+                    any(
+                        qualifier in header_item.lower()
+                        for qualifier in self._COL_QUALIFIERS_SHIP_NAME_TO
+                    )
+                    and self.col_index_ship_name_to is None
                 ):
                     self.col_index_ship_name_to = i
-                elif any(
-                    qualifier in header_item.lower()
-                    for qualifier in self._COL_QUALIFIERS_SHIP_NAME
+                elif (
+                    any(
+                        qualifier in header_item.lower()
+                        for qualifier in self._COL_QUALIFIERS_SHIP_NAME
+                    )
+                    and self.col_index_ship_name is None
                 ):
                     self.col_index_ship_name = i
 
@@ -155,7 +196,6 @@ class _HTMLTableParser(_GenericSubmissionParser):
                     update_type = table_metadata.type
                     try:
                         price_usd = row[table_metadata.col_index_price]
-                        # TODO: parse manufacturer name
                         if update_type == UpdateType.REDDIT_STANDALONES:
                             parsed_submissions.append(
                                 ParsedRedditSubmissionEntry(

@@ -132,6 +132,7 @@ class DataProviderManager:
             raise ValueError(f"provider for update type {data_type} not found.")
         return self._data_providers[data_type]
 
+    # TODO: add data providers automatically on initialization
     def add_data_provider(
         self, data_type: DataProviderType, data_provider: DataProvider
     ) -> None:

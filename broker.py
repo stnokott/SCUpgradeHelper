@@ -73,7 +73,6 @@ class SCDataBroker:
             ),
         )
         self._path_analyzer = PathAnalyzer(self._em, self._logger)
-        self.complete_update(force_update, True)
 
     def complete_update(self, force: bool = False, echo: bool = False) -> None:
         """
