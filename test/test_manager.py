@@ -2,8 +2,6 @@ from datetime import datetime
 
 import pytest
 
-from broker import SCDataBroker
-from config import ConfigProvider
 from const import RSI_SCRAPER_STORE_OWNER, RSI_SCRAPER_STORE_URL
 from db.entity import UpdateType
 from db.manager import EntityManager
@@ -13,8 +11,6 @@ _logger = CustomLogger(__name__)
 
 
 class TestEntityManager:
-    _BROKER = SCDataBroker(_logger, ConfigProvider(_logger))
-    _BROKER.complete_update(True)
     _EM = EntityManager(_logger)
 
     def test_find_store(self):
