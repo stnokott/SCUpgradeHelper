@@ -22,9 +22,9 @@ jobs:
         run: |
           cat > config.ini << ENDOFFILE
           [AUTH]
-          scapikey $SC_API_KEY
-          redditclientid $REDDIT_CLIENT_ID
-          redditclientsecret $REDDIT_CLIENT_SECRET
+          scapikey=$SC_API_KEY
+          redditclientid=$REDDIT_CLIENT_ID
+          redditclientsecret=$REDDIT_CLIENT_SECRET
           ENDOFFILE
       - name: Install dependencies
         run: |
