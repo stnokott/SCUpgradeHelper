@@ -31,7 +31,8 @@ class ParsedRedditSubmissionEntry:
         if "$" in price_string:
             regex_match = cls._REGEX_PRICE_MATCH.search(price_string)
             if regex_match is not None:
-                return float(regex_match.group(1) or regex_match.group(2))
+                match_str = regex_match.group(1) or regex_match.group(2)
+                return float(match_str.replace(",", "."))
         else:
             # Do simple parse
             if cls._REGEX_QUALIFY_SIMPLE_PARSE.match(price_string) is None:
@@ -48,7 +49,7 @@ class ParsedRedditSubmissionEntry:
     def __init__(self, *args, **kwargs):
         """
         ParsedSubmissionProxy(
-            entity_type,
+            update_type,
             price_usd,
             store_owner,
             store_url
