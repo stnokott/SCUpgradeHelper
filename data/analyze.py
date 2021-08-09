@@ -23,7 +23,17 @@ class UpgradePath:
             "Steps:"
         )
         for i, upgrade in enumerate(self.upgrades):
-            string += f"\n  {i + 1}) {upgrade.ship_from.name} -> {upgrade.ship_to.name} (${upgrade.price_usd}) @ {upgrade.store.url}"
+            ship_from_name = (
+                upgrade.ship_from.name
+                if upgrade.ship_from is not None
+                else upgrade.ship_id_from
+            )
+            ship_to_name = (
+                upgrade.ship_to.name
+                if upgrade.ship_to is not None
+                else upgrade.ship_id_to
+            )
+            string += f"\n  {i + 1}) {ship_from_name} -> {ship_to_name} (${upgrade.price_usd}) @ {upgrade.store.url}"
         return string
 
     def full_print(
