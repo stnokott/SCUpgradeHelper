@@ -20,6 +20,7 @@ jobs:
           pip install -r requirements.txt
       - name: Generate coverage report
         run: |
+          coverage run -m test.__main__ ${{ secrets.SC_API_KEY }} ${{ secrets.REDDIT_CLIENT_ID }} ${{ secrets.REDDIT_CLIENT_SECRET }}
           coverage xml -o coverage-reports/coverage.xml
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
