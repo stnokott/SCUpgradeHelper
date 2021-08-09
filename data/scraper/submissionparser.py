@@ -21,27 +21,21 @@ class ParsedRedditSubmissionEntry:
     Names and such will need to be mapped to their corresponding entries in the database.
     """
 
-    _REGEX_PRICE_SPLIT_USD_FIRST = re.compile(
-        r"(?:(?:\$\s?(\d+))|(?:(\d+)\s?\$))\D*(?:(?:€\?\d+)|(?:\d+\s?€))"
-    )
-    _REGEX_PRICE_SPLIT_USD_LAST = re.compile(
-        r"(?:(?:€\s?\d+)|(?:\d+\s?€))\D*(?:(?:\$\?(\d+))|(?:(\d+)\s?\$))"
-    )
+    _REGEX_PRICE_MATCH = re.compile(r"\D?(?:\$\s?(\d[\d.,]*))|(?:(\d[\d.,]*)\s?\$)\D?")
+    _REGEX_QUALIFY_SIMPLE_PARSE = re.compile(r"^\s*\d[\d.,]*\s*$")
     _REGEX_PARSE_PRICE_FLOAT = re.compile(r"[^\d.]")
-    _REGEX_CHECK_PRICE_STR = re.compile(r"^\d+\.?\d+$")
+    _REGEX_CHECK_PRICE_STR = re.compile(r"^\d+\D?\d*$")
 
     @classmethod
     def _parse_price_string(cls, price_string: str) -> Optional[float]:
-        regex_match_usd_first = cls._REGEX_PRICE_SPLIT_USD_FIRST.search(price_string)
-        regex_match_usd_last = cls._REGEX_PRICE_SPLIT_USD_LAST.search(price_string)
-        if regex_match_usd_first is not None:
-            return float(
-                regex_match_usd_first.group(1) or regex_match_usd_first.group(2)
-            )
-        elif regex_match_usd_last is not None:
-            return float(regex_match_usd_last.group(1) or regex_match_usd_last.group(2))
+        if "$" in price_string:
+            regex_match = cls._REGEX_PRICE_MATCH.search(price_string)
+            if regex_match is not None:
+                return float(regex_match.group(1) or regex_match.group(2))
         else:
             # Do simple parse
+            if cls._REGEX_QUALIFY_SIMPLE_PARSE.match(price_string) is None:
+                return None
             parsed_string = re.sub(cls._REGEX_PARSE_PRICE_FLOAT, "", price_string)
             if (
                 parsed_string.strip() != ""
