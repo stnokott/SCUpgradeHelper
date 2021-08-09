@@ -34,7 +34,7 @@ jobs:
         continue-on-error: true
         run: |
           coverage erase
-          coverage run --branch test
+          coverage run --branch --source=data,db,broker,config,const,util --omit=*/lib/* test
           coverage xml -o coverage-reports/coverage.xml
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
