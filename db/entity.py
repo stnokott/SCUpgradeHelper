@@ -34,6 +34,8 @@ class UpdateType(enum.Enum):
 
 
 class BaseMixin(object):
+    __abstract__ = True
+
     @declared_attr
     def __tablename__(self):
         return f"{self.__name__.upper()}S"
@@ -42,10 +44,12 @@ class BaseMixin(object):
 
 
 class DeltaProcessedMixin(object):
+    __abstract__ = True
     loaddate = Column(DateTime)
 
 
 class ReviewedMixin(object):
+    __abstract__ = True
     needs_review = Column(Boolean, nullable=False, default=False)
 
 
