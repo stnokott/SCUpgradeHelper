@@ -31,6 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Generate coverage report
+        continue-on-error: true
         run: |
           pytest --cov=test --cov-report=xml
       - name: SonarCloud Scan
