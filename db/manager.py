@@ -66,13 +66,17 @@ class EntityManager:
 
         self._logger.debug(">>> Limit exceeded, cleaning entries...")
         for update_type in UpdateType:
-            max_loaddate_query = self._session.query(
-                func.max(UpdateLog.loaddate)
-            ).filter_by(data_type=update_type)
+            max_loaddate_query = (
+                self._session.query(func.max(UpdateLog.loaddate))
+                .filter(UpdateLog.update_type == update_type)
+                .subquery()
+            )
             self._session.query(UpdateLog).filter(
-                UpdateLog.update_type == update_type,
-                UpdateLog.loaddate.notin_(max_loaddate_query),
-            ).delete()
+                and_(
+                    UpdateLog.update_type == update_type,
+                    UpdateLog.loaddate.not_in(select(max_loaddate_query)),
+                )
+            ).delete(synchronize_session="fetch")
         self._session.commit()
 
     def _query_rsi_standalones(self) -> Query:
