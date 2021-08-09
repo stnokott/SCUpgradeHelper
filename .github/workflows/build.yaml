@@ -33,7 +33,9 @@ jobs:
       - name: Generate coverage report
         continue-on-error: true
         run: |
-          pytest --cov=test --cov-report=xml
+          coverage erase
+          coverage run --branch test
+          coverage xml -o coverage-reports/coverage.xml
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
