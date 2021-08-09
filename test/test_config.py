@@ -6,7 +6,9 @@ from util import CustomLogger
 
 
 class TestConfigProvider:
-    _MAIN_DIR = os.path.abspath(os.path.join(os.getcwd(), ".."))
+    _MAIN_DIR = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    )
     _TMP_DIR = os.path.join(_MAIN_DIR, "tmp")
     _MAIN_CONFIG_FILE_PATH = os.path.join(_MAIN_DIR, CONFIG_FILEPATH)
     _TMP_CONFIG_FILE_PATH = os.path.join(_TMP_DIR, CONFIG_FILEPATH)
