@@ -105,6 +105,7 @@ class SCDataBroker:
         if updated or force:
             self._em.update_manufacturers([ship.manufacturer for ship in ships])
             self._em.update_ships(ships)
+            self._path_analyzer.update()
 
     def _update_rsi_standalones(self, force: bool = False, echo: bool = False) -> None:
         standalone_data_provider = self._data_provider_manager.get_data_provider(
@@ -117,6 +118,7 @@ class SCDataBroker:
                 standalone.store = store
                 standalone.store_id = store.id
             self._em.update_rsi_standalones(standalones)
+            self._path_analyzer.update()
 
     def _update_rsi_upgrades(self, force: bool = False, echo: bool = False) -> None:
         upgrade_data_provider = self._data_provider_manager.get_data_provider(
@@ -129,6 +131,7 @@ class SCDataBroker:
                 upgrade.store = store
                 upgrade.store_id = store.id
             self._em.update_rsi_upgrades(upgrades)
+            self._path_analyzer.update()
 
     def _update_reddit_entries(self, force: bool = False, echo: bool = False) -> None:
         reddit_data_provider = self._data_provider_manager.get_data_provider(
@@ -196,6 +199,7 @@ class SCDataBroker:
                 self._logger.warning(
                     f"{need_review_count_upgrades} Reddit upgrades need to be checked manually."
                 )
+            self._path_analyzer.update()
 
     def get_ships(self, force_update: bool = False) -> List[Ship]:
         """
