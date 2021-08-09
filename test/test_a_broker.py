@@ -1,3 +1,4 @@
+"""Renamed to be executed first"""
 import pytest
 
 from broker import SCDataBroker
