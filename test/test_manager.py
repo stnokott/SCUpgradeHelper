@@ -14,7 +14,7 @@ _logger = CustomLogger(__name__)
 
 class TestEntityManager:
     _BROKER = SCDataBroker(_logger, ConfigProvider(_logger))
-    _BROKER.complete_update()
+    _BROKER.complete_update(True)
     _EM = EntityManager(_logger)
 
     def test_find_store(self):
