@@ -1,11 +1,12 @@
 """Manager for database entities"""
 from datetime import datetime
+from os import path
 from typing import List, Optional, Type, Union, Tuple
 
 from fuzzywuzzy import process, fuzz
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, configure_mappers, Query
-from sqlalchemy.sql.expression import func, or_
+from sqlalchemy.sql.expression import func, or_, and_, select
 
 from const import (
     DATABASE_FILEPATH,
@@ -37,7 +38,12 @@ class EntityManager:
     """
 
     def __init__(self, logger: CustomLogger):
-        self._engine = create_engine(f"sqlite:///{DATABASE_FILEPATH}", echo=False)
+        database_dir = path.abspath(
+            path.join(path.abspath(path.dirname(__file__)), "..")
+        )
+        self._engine = create_engine(
+            f"sqlite:///{path.join(database_dir, DATABASE_FILEPATH)}", echo=False
+        )
         configure_mappers()
         self._session = Session(bind=self._engine, expire_on_commit=False)
         self._logger = logger
