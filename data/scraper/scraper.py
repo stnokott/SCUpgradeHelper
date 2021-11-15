@@ -10,13 +10,13 @@ from bs4 import BeautifulSoup
 from praw.models import Submission
 from requests import Session
 
-from const import RSI_SCRAPER_STORE_OWNER
 from data.scraper.submissionparser import (
     SubmissionParsingSuite,
     ParsedRedditSubmissionEntry,
 )
 from db.entity import Ship, Manufacturer, Upgrade, Standalone
-from util import CustomLogger
+from util.const import RSI_SCRAPER_STORE_OWNER
+from util.helpers import CustomLogger
 
 
 class RedditScraper:
@@ -58,7 +58,8 @@ class RedditScraper:
             limit=50,
         )
         filtered_submissions = self._filter_good_submissions(submissions)
-        return filtered_submissions
+        replaced_submissions = self._replace_self_links(filtered_submissions)
+        return replaced_submissions
 
     def _filter_good_submissions(
         self, submissions: List[Submission]
@@ -77,6 +78,26 @@ class RedditScraper:
                 submissions,
             )
         )
+
+    def _replace_self_links(self, submissions: List[Submission]) -> List[Submission]:
+        """
+        Replaces submissions that only contain link with the Submission instance of that link
+        Args:
+            submissions: list of submissions to parse
+        Returns:
+            Parsed list of submissions
+        """
+        parsed_submissions = []
+        for submission in submissions:
+            while (
+                hasattr(submission, "url_overridden_by_dest")
+                and submission.url_overridden_by_dest is not None
+            ):
+                submission = self._reddit.submission(
+                    url=submission.url_overridden_by_dest
+                )
+            parsed_submissions.append(submission)
+        return parsed_submissions
 
 
 class RSIScraper:
