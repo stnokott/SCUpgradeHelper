@@ -1,9 +1,9 @@
 wheel~=0.36.2
 requests~=2.26.0
 SQLAlchemy~=1.4.22
-praw~=7.4.0
+praw~=7.5.0
 fuzzywuzzy[speedup]~=0.18.0
-BeautifulSoup4~=4.9.3
+BeautifulSoup4~=4.10.0
 colorama~=0.4.4
 dijkstra~=0.2.1
 pytest~=6.2.4
