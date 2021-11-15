@@ -6,9 +6,9 @@ from typing import Optional, List
 from bs4 import BeautifulSoup
 from praw.reddit import Submission
 
-from const import REDDIT_PARSE_EXCLUDE_KEYWORDS
 from db.entity import UpdateType
-from util import CustomLogger
+from util.const import REDDIT_PARSE_EXCLUDE_KEYWORDS
+from util.helpers import CustomLogger
 
 
 class NotParsableException(Exception):

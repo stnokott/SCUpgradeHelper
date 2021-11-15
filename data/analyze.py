@@ -4,7 +4,7 @@ from dijkstra import DijkstraSPF, Graph
 
 from db.entity import Upgrade, Standalone
 from db.manager import EntityManager
-from util import CustomLogger
+from util.helpers import CustomLogger
 
 
 class UpgradePath:
@@ -16,9 +16,12 @@ class UpgradePath:
     def _generate_full_string(self) -> str:
         if len(self.upgrades) == 0:
             return "Upgrade path: (empty)"
+        start_upgrade = self.upgrades[0]
+        end_upgrade = self.upgrades[-1]
         string = (
             "Upgrade path:\n"
-            f"{self.upgrades[0].ship_from.name} -> {self.upgrades[-1].ship_to.name}\n"
+            f"{start_upgrade.ship_from.name if start_upgrade.ship_from is not None else start_upgrade.ship_id_from} "
+            f"-> {end_upgrade.ship_to.name if end_upgrade.ship_to is not None else end_upgrade.ship_id_to}\n"
             f"Total cost: ${self.total_cost}\n"
             "Steps:"
         )

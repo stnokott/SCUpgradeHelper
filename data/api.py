@@ -5,7 +5,7 @@ from typing import List
 import requests
 
 from db.entity import Ship, Manufacturer
-from util import CustomLogger
+from util.helpers import CustomLogger
 
 
 class SCApi:

@@ -1,9 +1,9 @@
 """Contains broker classes for communicating data between APIs and the database"""
 import datetime
+from os import path
 from typing import List, Optional
 
 from config import ConfigProvider
-from const import RSI_SCRAPER_STORE_URL, RSI_SCRAPER_STORE_OWNER
 from data.analyze import PathAnalyzer, UpgradePath, PurchasePath
 from data.api import SCApi
 from data.provider import (
@@ -17,7 +17,8 @@ from data.provider import (
 from data.scraper.submissionparser import ParsedRedditSubmissionEntry
 from db.entity import Ship, Upgrade, UpdateType, Standalone
 from db.manager import EntityManager
-from util import CustomLogger
+from util.const import RSI_SCRAPER_STORE_URL, RSI_SCRAPER_STORE_OWNER, DATABASE_FILEPATH
+from util.helpers import CustomLogger
 
 
 class SCDataBroker:
@@ -26,10 +27,16 @@ class SCDataBroker:
     """
 
     def __init__(
-        self, logger: CustomLogger, config: ConfigProvider, force_update: bool = False
+        self, logger: CustomLogger, config: ConfigProvider, database_path=None
     ):
         self._logger = logger
-        self._em = EntityManager(logger)
+        if database_path is None:
+            database_dir = path.abspath(
+                path.join(path.abspath(path.dirname(__file__)), "..")
+            )
+            self._em = EntityManager(logger, path.join(database_dir, DATABASE_FILEPATH))
+        else:
+            self._em = EntityManager(logger, database_path)
         self._scapi = SCApi(config.sc_api_key, logger)
         self._data_provider_manager = DataProviderManager()
         ship_data_provider = ShipDataProvider(

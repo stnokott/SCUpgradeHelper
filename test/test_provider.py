@@ -10,7 +10,7 @@ from data.provider import (
     OfficialUpgradeDataProvider,
     DataProviderType,
 )
-from util import format_timedelta, CustomLogger
+from util.helpers import format_timedelta, CustomLogger
 
 
 def test_expiry_expired():

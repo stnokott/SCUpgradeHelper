@@ -2,16 +2,16 @@ from datetime import datetime
 
 import pytest
 
-from const import RSI_SCRAPER_STORE_OWNER, RSI_SCRAPER_STORE_URL
 from db.entity import UpdateType
 from db.manager import EntityManager
-from util import CustomLogger
+from util.const import RSI_SCRAPER_STORE_OWNER, RSI_SCRAPER_STORE_URL
+from util.helpers import CustomLogger
 
 _logger = CustomLogger(__name__)
 
 
 class TestEntityManager:
-    _EM = EntityManager(_logger)
+    _EM = EntityManager(_logger, "test_database.db")
 
     def test_find_store(self):
         store = self._EM.find_store(RSI_SCRAPER_STORE_OWNER, RSI_SCRAPER_STORE_URL)

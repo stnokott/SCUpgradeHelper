@@ -1,17 +1,21 @@
 """Renamed to be executed first"""
+import os
+
 import pytest
 
 from broker import SCDataBroker
 from config import ConfigProvider
 from db.entity import Upgrade, Standalone
-from util import CustomLogger
+from util.helpers import CustomLogger
 
 
 @pytest.fixture(scope="session")
 def broker():
     logger = CustomLogger(__name__)
-    broker = SCDataBroker(logger, ConfigProvider(logger))
-    return broker
+    absolute_path = os.path.abspath("test_database.db")
+    broker = SCDataBroker(logger, ConfigProvider(logger), absolute_path)
+    yield broker
+    os.remove(absolute_path)
 
 
 class TestSCDataBroker:
@@ -28,7 +32,7 @@ class TestSCDataBroker:
         upgrade_path = broker.get_upgrade_path(1, 60)
         assert upgrade_path is not None
         assert upgrade_path.total_cost is not None
-        assert upgrade_path.total_cost == (999.0 + 999.0)
+        assert upgrade_path.total_cost > 0
         assert upgrade_path.upgrades[0].ship_id_from == 1
         assert upgrade_path.upgrades[-1].ship_id_to == 60
 

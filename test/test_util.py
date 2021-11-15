@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from util import format_timedelta, CustomLogger
+from util.helpers import format_timedelta, CustomLogger
 
 
 def test_format_timedelta():

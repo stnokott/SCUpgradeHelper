@@ -1,6 +1,5 @@
 """Manager for database entities"""
 from datetime import datetime
-from os import path
 from typing import List, Optional, Type, Union, Tuple
 
 from fuzzywuzzy import process, fuzz
@@ -8,17 +7,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, configure_mappers, Query
 from sqlalchemy.sql.expression import func, or_, and_, select
 
-from const import (
-    DATABASE_FILEPATH,
-    UPDATE_LOGS_ENTRY_LIMIT,
-    RSI_SCRAPER_STORE_OWNER,
-    SHIP_DATA_EXPIRY,
-    RSI_STANDALONE_DATA_EXPIRY,
-    RSI_UPGRADE_DATA_EXPIRY,
-    FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE,
-    fuzzy_search_min_score,
-    REDDIT_DATA_EXPIRY,
-)
 from db.entity import (
     UpdateType,
     Ship,
@@ -29,7 +17,17 @@ from db.entity import (
     UpdateLog,
     Store,
 )
-from util import CustomLogger
+from util.const import (
+    UPDATE_LOGS_ENTRY_LIMIT,
+    RSI_SCRAPER_STORE_OWNER,
+    SHIP_DATA_EXPIRY,
+    RSI_STANDALONE_DATA_EXPIRY,
+    RSI_UPGRADE_DATA_EXPIRY,
+    FUZZY_SEARCH_PERFECT_MATCH_MIN_SCORE,
+    fuzzy_search_min_score,
+    REDDIT_DATA_EXPIRY,
+)
+from util.helpers import CustomLogger
 
 
 class EntityManager:
@@ -37,13 +35,8 @@ class EntityManager:
     Manages the application's database and its entities
     """
 
-    def __init__(self, logger: CustomLogger):
-        database_dir = path.abspath(
-            path.join(path.abspath(path.dirname(__file__)), "..")
-        )
-        self._engine = create_engine(
-            f"sqlite:///{path.join(database_dir, DATABASE_FILEPATH)}", echo=False
-        )
+    def __init__(self, logger: CustomLogger, database_path: str):
+        self._engine = create_engine(f"sqlite:///{database_path}", echo=False)
         configure_mappers()
         self._session = Session(bind=self._engine, expire_on_commit=False)
         self._logger = logger

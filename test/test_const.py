@@ -1,4 +1,4 @@
-from const import fuzzy_search_min_score
+from util.const import fuzzy_search_min_score
 
 
 def test_fuzzy_search_min_score():

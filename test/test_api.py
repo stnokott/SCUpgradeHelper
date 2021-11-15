@@ -1,6 +1,6 @@
 from config import ConfigProvider
 from data.api import SCApi
-from util import CustomLogger
+from util.helpers import CustomLogger
 
 
 def test_sc_api():

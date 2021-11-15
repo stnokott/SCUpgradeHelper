@@ -3,8 +3,8 @@
 import configparser
 import os
 
-from const import CONFIG_FILEPATH
-from util import CustomLogger
+from util.const import CONFIG_FILEPATH
+from util.helpers import CustomLogger
 
 DEFAULT_VALUES = {
     "AUTH": {"scapikey": "", "redditclientid": "", "redditclientsecret": ""}
